@@ -69,14 +69,18 @@ function SkillPill({ skill }) {
 export default function CourseScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { courseId } = useLocalSearchParams();
+  const { courseId, topic } = useLocalSearchParams();
 
   if (!fontsLoaded) return null;
 
-  const course = SAMPLE_COURSE;
+  // Use topic from params or fallback to sample
+  const course = {
+    ...SAMPLE_COURSE,
+    title: topic || SAMPLE_COURSE.title,
+  };
 
   const handleBack = () => {
-    router.back();
+    router.replace('/home');
   };
 
   const handleContinue = () => {

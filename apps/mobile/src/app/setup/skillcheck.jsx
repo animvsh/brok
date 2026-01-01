@@ -11,13 +11,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, X, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
-import { useAuth } from '@/utils/auth';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // Sample skill check questions
 const SAMPLE_QUESTIONS = [
@@ -91,43 +88,14 @@ export default function SkillCheckScreen() {
       // Create course
       setLoading(true);
 
-      try {
-        const response = await fetch(`${API_URL}/api/threads/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({
-            input: topic,
-            inputType: 'text',
-            intent,
-            intensity,
-            skillCheck: newAnswers,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.threadId) {
-          router.replace({
-            pathname: '/course',
-            params: { courseId: data.threadId },
-          });
-        } else {
-          // Fallback to course with sample ID
-          router.replace({
-            pathname: '/course',
-            params: { courseId: 'new' },
-          });
-        }
-      } catch (error) {
-        console.error('Error:', error);
+      // For now, skip API and go directly to course with sample data
+      // This ensures the flow works even without backend
+      setTimeout(() => {
         router.replace({
           pathname: '/course',
-          params: { courseId: 'new' },
+          params: { courseId: 'new', topic, intent, intensity },
         });
-      }
+      }, 1500);
     }
   };
 

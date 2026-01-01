@@ -44,8 +44,12 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="auth" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="onboarding" options={{ animation: 'slide_from_right' }} />
-            <Stack.Screen name="skillcheck" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="home" />
+            <Stack.Screen name="discover" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="setup" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="course" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="skillgraph" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="profile" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="lesson" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="complete" options={{ animation: 'fade' }} />
           </Stack>

@@ -6,22 +6,19 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Flame,
-  Heart,
-  Target,
+  Star,
   Play,
-  Lock,
+  Plus,
   BookOpen,
-  Brain,
-  Zap,
-  Dna,
+  ChevronRight,
+  User,
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
@@ -29,51 +26,40 @@ import { supabase } from '@/utils/auth/supabase';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
-// Sample path nodes
-const SAMPLE_PATH = [
-  { id: 1, type: 'intro', title: 'Intro Lesson', status: 'current', icon: BookOpen, color: '#6366F1' },
-  { id: 2, type: 'locked', title: 'Locked', status: 'locked', icon: Lock, color: '#9CA3AF' },
-  { id: 3, type: 'concept', title: 'Warm-Blooded', status: 'locked', icon: Brain, color: '#EC4899' },
-  { id: 4, type: 'concept', title: 'Evolution', status: 'locked', icon: Dna, color: '#8B5CF6' },
+// Sample active courses
+const SAMPLE_COURSES = [
+  {
+    id: '1',
+    title: 'Data Structures',
+    progress: 45,
+    nextLesson: 'Arrays Basics',
+    color: '#6366F1',
+  },
+  {
+    id: '2',
+    title: 'Spanish',
+    progress: 20,
+    nextLesson: 'Basic Greetings',
+    color: '#EC4899',
+  },
 ];
 
-function LessonPill({ node, onPress }) {
-  const Icon = node.icon;
-  const isLocked = node.status === 'locked';
-  const isCurrent = node.status === 'current';
-
+function CourseCard({ course, onPress }) {
   return (
-    <TouchableOpacity
-      style={[
-        styles.lessonPill,
-        isCurrent && styles.lessonPillCurrent,
-        isLocked && styles.lessonPillLocked,
-      ]}
-      onPress={() => !isLocked && onPress(node)}
-      disabled={isLocked}
-      activeOpacity={0.8}
-    >
-      <LinearGradient
-        colors={isLocked ? ['#F3F4F6', '#E5E7EB'] : [node.color, `${node.color}DD`]}
-        style={styles.lessonPillGradient}
-      >
-        <View style={styles.lessonPillIcon}>
-          <Icon size={20} color={isLocked ? '#9CA3AF' : '#FFFFFF'} />
+    <TouchableOpacity style={styles.courseCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={[styles.courseIcon, { backgroundColor: `${course.color}20` }]}>
+        <BookOpen size={24} color={course.color} />
+      </View>
+      <View style={styles.courseInfo}>
+        <Text style={styles.courseTitle}>{course.title}</Text>
+        <Text style={styles.courseNext}>Next: {course.nextLesson}</Text>
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBar, { width: `${course.progress}%`, backgroundColor: course.color }]} />
         </View>
-        <Text style={[
-          styles.lessonPillText,
-          isLocked && styles.lessonPillTextLocked,
-        ]}>
-          {node.title}
-        </Text>
-        {isCurrent && (
-          <View style={styles.playBadge}>
-            <Play size={12} color="#FFFFFF" fill="#FFFFFF" />
-          </View>
-        )}
-      </LinearGradient>
+      </View>
+      <View style={styles.courseArrow}>
+        <ChevronRight size={20} color={COLORS.text.muted} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -81,57 +67,68 @@ function LessonPill({ node, onPress }) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { user, session } = useAuth();
-  const { threadId } = useLocalSearchParams();
+  const { user } = useAuth();
 
   // Fetch user stats
   const { data: stats } = useQuery({
     queryKey: ['userStats', user?.id],
     queryFn: async () => {
+      if (!user?.id) return { streak: 3, xp: 450 };
       const { data } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
-      return data || { total_xp: 0, current_streak: 3, hearts: 5 };
+      return data || { streak: 3, xp: 450 };
     },
     enabled: !!user?.id,
   });
 
-  // Fetch today's path
-  const { data: pathData, isLoading } = useQuery({
-    queryKey: ['todaysPath', threadId],
+  // Fetch active courses
+  const { data: coursesData } = useQuery({
+    queryKey: ['activeCourses', user?.id],
     queryFn: async () => {
-      if (!threadId || !session?.access_token) return { nodes: SAMPLE_PATH };
-
-      try {
-        const response = await fetch(
-          `${API_URL}/api/threads/${threadId}/next`,
-          { headers: { Authorization: `Bearer ${session.access_token}` } }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          return { nodes: data.pathNodes || SAMPLE_PATH };
-        }
-      } catch (e) {
-        console.error('Error fetching path:', e);
-      }
-      return { nodes: SAMPLE_PATH };
+      if (!user?.id) return SAMPLE_COURSES;
+      const { data } = await supabase
+        .from('learning_threads')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false });
+      return data?.length ? data : SAMPLE_COURSES;
     },
     enabled: !!user?.id,
   });
 
   if (!fontsLoaded) return null;
 
-  const streak = stats?.current_streak || 3;
-  const hearts = stats?.hearts || 5;
-  const pathNodes = pathData?.nodes || SAMPLE_PATH;
+  const streak = stats?.streak || stats?.current_streak || 3;
+  const xp = stats?.xp || stats?.total_xp || 450;
+  const courses = coursesData || SAMPLE_COURSES;
+  const hasCourses = courses.length > 0;
 
-  const handleLessonPress = (node) => {
+  const handleContinueLearning = () => {
+    if (courses[0]) {
+      router.push({
+        pathname: '/course',
+        params: { courseId: courses[0].id },
+      });
+    }
+  };
+
+  const handleLearnNew = () => {
+    router.push('/discover');
+  };
+
+  const handleCoursePress = (course) => {
     router.push({
-      pathname: '/lesson',
-      params: { threadId, nodeId: node.id },
+      pathname: '/course',
+      params: { courseId: course.id },
     });
+  };
+
+  const handleProfile = () => {
+    router.push('/profile');
   };
 
   return (
@@ -144,105 +141,97 @@ export default function HomeScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Cloud decorations */}
-      <View style={[styles.cloud, styles.cloud1]} />
-      <View style={[styles.cloud, styles.cloud2]} />
-
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Today's Mission</Text>
-        <View style={styles.statsRow}>
-          {/* Streak */}
-          <View style={[styles.statBadge, styles.statBadgeStreak]}>
-            <Flame size={16} color="#FF6B35" />
-            <Text style={styles.statValue}>{streak}</Text>
-          </View>
-          {/* Hearts */}
-          <View style={[styles.statBadge, styles.statBadgeHearts]}>
-            <Heart size={16} color="#EC4899" fill="#EC4899" />
-            <Text style={styles.statValue}>{hearts}</Text>
-          </View>
-          {/* Target */}
-          <View style={[styles.statBadge, styles.statBadgeTarget]}>
-            <Target size={16} color="#10B981" />
-          </View>
+        <View>
+          <Text style={styles.greeting}>Welcome back!</Text>
+          <Text style={styles.subtitle}>Ready to learn?</Text>
+        </View>
+        <TouchableOpacity style={styles.profileButton} onPress={handleProfile}>
+          <User size={22} color={COLORS.text.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Stats Row */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statBadge, styles.statBadgeStreak]}>
+          <Flame size={18} color="#FF6B35" />
+          <Text style={styles.statValue}>{streak}</Text>
+          <Text style={styles.statLabel}>day streak</Text>
+        </View>
+        <View style={[styles.statBadge, styles.statBadgeXP]}>
+          <Star size={18} color="#FFD700" fill="#FFD700" />
+          <Text style={styles.statValue}>{xp}</Text>
+          <Text style={styles.statLabel}>total XP</Text>
         </View>
       </View>
 
-      {/* Loading state */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Primary Actions */}
+        <View style={styles.actionsContainer}>
+          {/* Continue Learning */}
+          {hasCourses && (
+            <TouchableOpacity style={styles.continueCard} onPress={handleContinueLearning}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.continueGradient}
+              >
+                <View style={styles.continueContent}>
+                  <View style={styles.continueIcon}>
+                    <Play size={28} color="#FFFFFF" fill="#FFFFFF" />
+                  </View>
+                  <View style={styles.continueText}>
+                    <Text style={styles.continueTitle}>Continue Learning</Text>
+                    <Text style={styles.continueSubtitle}>{courses[0]?.title}</Text>
+                  </View>
+                </View>
+                <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* Learn Something New */}
+          <TouchableOpacity style={styles.newCard} onPress={handleLearnNew}>
+            <View style={styles.newIcon}>
+              <Plus size={24} color={COLORS.primary} />
+            </View>
+            <View style={styles.newText}>
+              <Text style={styles.newTitle}>Learn Something New</Text>
+              <Text style={styles.newSubtitle}>Explore any topic</Text>
+            </View>
+            <ChevronRight size={20} color={COLORS.text.muted} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + 40 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Lesson Pills */}
-          <View style={styles.lessonsContainer}>
-            {pathNodes.map((node, index) => (
-              <LessonPill
-                key={node.id}
-                node={node}
-                onPress={handleLessonPress}
+
+        {/* Active Courses */}
+        {hasCourses && (
+          <View style={styles.coursesSection}>
+            <Text style={styles.sectionTitle}>Your Courses</Text>
+            {courses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                onPress={() => handleCoursePress(course)}
               />
             ))}
           </View>
+        )}
 
-          {/* Mascot with calendar */}
-          <View style={styles.mascotSection}>
+        {/* Empty State */}
+        {!hasCourses && (
+          <View style={styles.emptyState}>
             <BrokMascot size={140} mood="encouraging" />
-
-            {/* Mini Calendar */}
-            <View style={styles.calendarCard}>
-              <View style={styles.calendarHeader}>
-                <Text style={styles.calendarMonth}>MON TUE WED THU FRI SAT SUN</Text>
-              </View>
-              <View style={styles.calendarDays}>
-                {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                  <View
-                    key={day}
-                    style={[
-                      styles.calendarDay,
-                      day <= streak && styles.calendarDayActive,
-                    ]}
-                  >
-                    {day <= streak ? (
-                      <Text style={styles.calendarDayCheck}>✓</Text>
-                    ) : (
-                      <Text style={styles.calendarDayNumber}>{day}</Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            </View>
+            <Text style={styles.emptyTitle}>Start your journey!</Text>
+            <Text style={styles.emptySubtitle}>
+              Tap "Learn Something New" to begin
+            </Text>
           </View>
-        </ScrollView>
-      )}
-
-      {/* Start Button */}
-      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={() => {
-            const currentNode = pathNodes.find(n => n.status === 'current');
-            if (currentNode) handleLessonPress(currentNode);
-          }}
-        >
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.startGradient}
-          >
-            <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
-            <Text style={styles.startText}>Start Lesson</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -252,45 +241,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#E8D5FF',
   },
-  cloud: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    borderRadius: 100,
-  },
-  cloud1: {
-    width: 150,
-    height: 60,
-    top: 100,
-    right: -40,
-  },
-  cloud2: {
-    width: 100,
-    height: 40,
-    top: 180,
-    left: -20,
-  },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 16,
   },
-  title: {
+  greeting: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 28,
     color: COLORS.text.primary,
-    marginBottom: 16,
+  },
+  subtitle: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 16,
+    color: COLORS.text.secondary,
+    marginTop: 4,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
+    paddingHorizontal: 24,
+    gap: 12,
+    marginBottom: 20,
   },
   statBadge: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -300,157 +296,179 @@ const styles = StyleSheet.create({
   statBadgeStreak: {
     backgroundColor: '#FFF5F0',
   },
-  statBadgeHearts: {
-    backgroundColor: '#FFF0F5',
-  },
-  statBadgeTarget: {
-    backgroundColor: '#F0FFF5',
+  statBadgeXP: {
+    backgroundColor: '#FFFBEB',
   },
   statValue: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 16,
+    fontSize: 20,
     color: COLORS.text.primary,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  statLabel: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 12,
+    color: COLORS.text.secondary,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 8,
   },
-  lessonsContainer: {
+  actionsContainer: {
     gap: 12,
+    marginBottom: 24,
   },
-  lessonPill: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  lessonPillCurrent: {
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  lessonPillLocked: {
-    opacity: 0.7,
-  },
-  lessonPillGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-  },
-  lessonPillIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  lessonPillText: {
-    flex: 1,
-    fontFamily: 'Urbanist_600SemiBold',
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  lessonPillTextLocked: {
-    color: '#6B7280',
-  },
-  playBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mascotSection: {
-    alignItems: 'center',
-    marginTop: 32,
-    gap: 20,
-  },
-  calendarCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  calendarHeader: {
-    marginBottom: 12,
-  },
-  calendarMonth: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 10,
-    color: COLORS.text.muted,
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-  calendarDays: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  calendarDay: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  calendarDayActive: {
-    backgroundColor: '#7DD87D',
-  },
-  calendarDayNumber: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
-    color: COLORS.text.muted,
-  },
-  calendarDayCheck: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  bottomContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    backgroundColor: 'transparent',
-  },
-  startButton: {
-    borderRadius: 50,
+  continueCard: {
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 6,
   },
-  startGradient: {
+  continueGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    gap: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
-  startText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 17,
+  continueContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  continueIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  continueText: {},
+  continueTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 18,
     color: '#FFFFFF',
+  },
+  continueSubtitle: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  newCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  newIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  newText: {
+    flex: 1,
+  },
+  newTitle: {
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 16,
+    color: COLORS.text.primary,
+  },
+  newSubtitle: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    marginTop: 2,
+  },
+  coursesSection: {
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 18,
+    color: COLORS.text.primary,
+    marginBottom: 16,
+  },
+  courseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  courseIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  courseInfo: {
+    flex: 1,
+  },
+  courseTitle: {
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 16,
+    color: COLORS.text.primary,
+  },
+  courseNext: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  courseArrow: {
+    marginLeft: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 22,
+    color: COLORS.text.primary,
+    marginTop: 20,
+  },
+  emptySubtitle: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 15,
+    color: COLORS.text.secondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

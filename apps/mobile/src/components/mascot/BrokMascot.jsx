@@ -91,59 +91,70 @@ export default function BrokMascot({
           <Ellipse cx="85" cy="32" rx="10" ry="12" fill="#6BCB6B" />
           <Ellipse cx="85" cy="28" rx="5" ry="6" fill="#9AE89A" />
 
-          {/* Left eye white (big!) */}
+          {/* Left eye white (HUGE for cuteness!) */}
           <Ellipse
-            cx="42"
-            cy="52"
-            rx={16 * expression.eyeScale}
-            ry={18 * expression.eyeScale}
-            fill="white"
-            stroke="#E0E0E0"
+            cx="40"
+            cy="50"
+            rx={20 * expression.eyeScale}
+            ry={22 * expression.eyeScale}
+            fill="url(#eyeShine)"
+            stroke="#D0D0D0"
             strokeWidth="0.5"
           />
 
-          {/* Right eye white (big!) */}
+          {/* Right eye white (HUGE for cuteness!) */}
           <Ellipse
-            cx="78"
-            cy="52"
-            rx={16 * expression.eyeScale}
-            ry={18 * expression.eyeScale}
-            fill="white"
-            stroke="#E0E0E0"
+            cx="80"
+            cy="50"
+            rx={20 * expression.eyeScale}
+            ry={22 * expression.eyeScale}
+            fill="url(#eyeShine)"
+            stroke="#D0D0D0"
             strokeWidth="0.5"
           />
 
-          {/* Left eye pupil */}
+          {/* Left eye pupil - bigger and darker for 3D depth */}
           <Circle
-            cx={expression.lookUp ? 40 : 44}
-            cy={expression.lookUp ? 48 : 54}
-            r={10 * expression.eyeScale}
-            fill="#1A1A2E"
+            cx={expression.lookUp ? 38 : 42}
+            cy={expression.lookUp ? 46 : 52}
+            r={12 * expression.eyeScale}
+            fill="#0D0D1A"
           />
-          {/* Left eye highlight (big shine) */}
-          <Circle cx={expression.lookUp ? 37 : 41} cy={expression.lookUp ? 45 : 50} r={4 * expression.eyeScale} fill="white" />
-          <Circle cx={expression.lookUp ? 43 : 47} cy={expression.lookUp ? 52 : 57} r={2 * expression.eyeScale} fill="white" opacity="0.7" />
+          {/* Left eye inner shine ring */}
+          <Circle cx={expression.lookUp ? 38 : 42} cy={expression.lookUp ? 46 : 52} r={9 * expression.eyeScale} fill="#1A1A30" />
+          {/* Left eye main highlight (big shine) */}
+          <Ellipse cx={expression.lookUp ? 34 : 38} cy={expression.lookUp ? 42 : 47} rx={5 * expression.eyeScale} ry={4 * expression.eyeScale} fill="white" />
+          {/* Left eye secondary highlight */}
+          <Circle cx={expression.lookUp ? 42 : 46} cy={expression.lookUp ? 50 : 56} r={2.5 * expression.eyeScale} fill="white" opacity="0.8" />
+          {/* Left eye tiny sparkle */}
+          <Circle cx={expression.lookUp ? 35 : 39} cy={expression.lookUp ? 44 : 49} r={1.2 * expression.eyeScale} fill="white" />
 
           {/* Right eye pupil / wink */}
           {expression.wink ? (
             <Path
-              d="M68 54 Q78 60, 88 54"
-              stroke="#1A1A2E"
-              strokeWidth="3.5"
+              d="M68 52 Q80 60, 92 52"
+              stroke="#0D0D1A"
+              strokeWidth="4"
               fill="none"
               strokeLinecap="round"
             />
           ) : (
             <>
+              {/* Right eye pupil - bigger and darker for 3D depth */}
               <Circle
-                cx={expression.lookUp ? 76 : 80}
-                cy={expression.lookUp ? 48 : 54}
-                r={10 * expression.eyeScale}
-                fill="#1A1A2E"
+                cx={expression.lookUp ? 78 : 82}
+                cy={expression.lookUp ? 46 : 52}
+                r={12 * expression.eyeScale}
+                fill="#0D0D1A"
               />
-              {/* Right eye highlight */}
-              <Circle cx={expression.lookUp ? 73 : 77} cy={expression.lookUp ? 45 : 50} r={4 * expression.eyeScale} fill="white" />
-              <Circle cx={expression.lookUp ? 79 : 83} cy={expression.lookUp ? 52 : 57} r={2 * expression.eyeScale} fill="white" opacity="0.7" />
+              {/* Right eye inner shine ring */}
+              <Circle cx={expression.lookUp ? 78 : 82} cy={expression.lookUp ? 46 : 52} r={9 * expression.eyeScale} fill="#1A1A30" />
+              {/* Right eye main highlight */}
+              <Ellipse cx={expression.lookUp ? 74 : 78} cy={expression.lookUp ? 42 : 47} rx={5 * expression.eyeScale} ry={4 * expression.eyeScale} fill="white" />
+              {/* Right eye secondary highlight */}
+              <Circle cx={expression.lookUp ? 82 : 86} cy={expression.lookUp ? 50 : 56} r={2.5 * expression.eyeScale} fill="white" opacity="0.8" />
+              {/* Right eye tiny sparkle */}
+              <Circle cx={expression.lookUp ? 75 : 79} cy={expression.lookUp ? 44 : 49} r={1.2 * expression.eyeScale} fill="white" />
             </>
           )}
 

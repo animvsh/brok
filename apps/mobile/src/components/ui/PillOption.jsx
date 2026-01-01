@@ -1,10 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import {
-  Check,
-  X,
-  Lock,
-} from 'lucide-react-native';
+import { Check, Lock } from 'lucide-react-native';
 import { COLORS } from '../theme/colors';
 import {
   GuitarIcon,
@@ -30,7 +26,6 @@ import {
 
 // Custom emoji-style icon mapping
 const EMOJI_ICON_MAP = {
-  // Topic icons
   music: GuitarIcon,
   guitar: GuitarIcon,
   code: DataBrainIcon,
@@ -47,8 +42,8 @@ const EMOJI_ICON_MAP = {
   flask: ScienceIcon,
   science: ScienceIcon,
   sparkles: SparkleIcon,
-  // Reason icons
   smile: SmileIcon,
+  fun: SmileIcon,
   'graduation-cap': GradCapIcon,
   school: GradCapIcon,
   briefcase: BriefcaseIcon,
@@ -59,67 +54,54 @@ const EMOJI_ICON_MAP = {
   hobby: HeartIcon,
   trophy: TrophyIcon,
   challenge: TrophyIcon,
-  // Animal icons for quiz options
   eagle: EagleIcon,
-  bird: EagleIcon,
   frog: FrogIcon,
   dolphin: DolphinIcon,
-  fish: DolphinIcon,
   bat: BatIcon,
-  bug: BatIcon,
 };
 
 /**
- * Pill-shaped option button with colorful emoji-style icon
+ * Pill-shaped option - white background with emoji icon on left
+ * Matches Duolingo-style reference design
  */
 export default function PillOption({
   label,
   icon = 'sparkles',
-  iconColor = COLORS.accent.purple,
   selected = false,
-  correct = null, // null = not answered, true = correct, false = incorrect
+  correct = null,
   locked = false,
   onPress,
   style,
-  size = 'medium', // small, medium, large
+  size = 'medium',
 }) {
   const IconComponent = EMOJI_ICON_MAP[icon] || SparkleIcon;
 
   const getSizeStyles = () => {
     switch (size) {
       case 'small':
-        return { paddingVertical: 12, paddingHorizontal: 18, iconSize: 32, fontSize: 15 };
+        return { paddingVertical: 12, paddingHorizontal: 16, iconSize: 28, fontSize: 15 };
       case 'large':
-        return { paddingVertical: 16, paddingHorizontal: 22, iconSize: 44, fontSize: 18 };
-      case 'medium':
+        return { paddingVertical: 16, paddingHorizontal: 20, iconSize: 36, fontSize: 17 };
       default:
-        return { paddingVertical: 14, paddingHorizontal: 20, iconSize: 38, fontSize: 16 };
+        return { paddingVertical: 14, paddingHorizontal: 18, iconSize: 32, fontSize: 16 };
     }
   };
 
   const sizeStyles = getSizeStyles();
 
+  const getBorderColor = () => {
+    if (correct === true) return '#4CAF50';
+    if (correct === false) return '#F44336';
+    if (selected) return '#2196F3';
+    return '#E0E0E0';
+  };
+
   const getBackgroundColor = () => {
-    if (locked) return COLORS.pill.locked;
+    if (locked) return '#F8F8F8';
     if (correct === true) return '#E8F5E9';
     if (correct === false) return '#FFEBEE';
-    if (selected) return COLORS.pill.selected;
-    return COLORS.pill.unselected;
-  };
-
-  const getBorderColor = () => {
-    if (correct === true) return COLORS.status.success;
-    if (correct === false) return COLORS.status.error;
-    if (selected) return COLORS.pill.selected;
-    return 'rgba(0, 0, 0, 0.08)';
-  };
-
-  const getTextColor = () => {
-    if (locked) return COLORS.text.muted;
-    if (correct === true) return '#2E7D32';
-    if (correct === false) return '#C62828';
-    if (selected) return COLORS.text.light;
-    return COLORS.text.primary;
+    if (selected) return '#E3F2FD';
+    return 'white';
   };
 
   return (
@@ -146,110 +128,54 @@ export default function PillOption({
       <Text
         style={[
           styles.label,
-          {
-            color: getTextColor(),
-            fontSize: sizeStyles.fontSize,
-          },
+          { fontSize: sizeStyles.fontSize },
+          locked && { color: COLORS.text.muted },
+          correct === true && { color: '#2E7D32' },
+          correct === false && { color: '#C62828' },
         ]}
         numberOfLines={1}
       >
         {label}
       </Text>
 
-      {/* Status icons */}
       {correct === true && (
-        <View style={[styles.statusIcon, { backgroundColor: '#4CAF50' }]}>
-          <Check size={14} color="white" />
+        <View style={[styles.checkBadge, { backgroundColor: '#4CAF50' }]}>
+          <Check size={14} color="white" strokeWidth={3} />
         </View>
       )}
-      {correct === false && (
-        <View style={[styles.statusIcon, { backgroundColor: '#F44336' }]}>
-          <X size={14} color="white" />
-        </View>
-      )}
-      {locked && (
-        <Lock size={16} color={COLORS.text.muted} style={styles.lockIcon} />
-      )}
+      {locked && <Lock size={18} color={COLORS.text.muted} />}
     </TouchableOpacity>
   );
 }
 
 /**
- * Circular icon button (for topic selection grid)
- */
-export function TopicChip({
-  label,
-  icon = 'sparkles',
-  iconColor = COLORS.accent.purple,
-  selected = false,
-  onPress,
-  style,
-}) {
-  const IconComponent = EMOJI_ICON_MAP[icon] || SparkleIcon;
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={[
-        styles.chipContainer,
-        selected && styles.chipSelected,
-        style,
-      ]}
-    >
-      <View style={styles.chipIconWrapper}>
-        <IconComponent size={28} />
-      </View>
-      <Text
-        style={[
-          styles.chipLabel,
-          selected && styles.chipLabelSelected,
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-/**
- * Quiz option with animal icon for multiple choice
+ * Quiz option with animal icon - matches reference exactly
  */
 export function QuizOption({
   label,
   optionLetter = 'A',
-  icon = 'eagle',
   selected = false,
   correct = null,
   onPress,
   style,
 }) {
-  const IconComponent = EMOJI_ICON_MAP[icon] || EagleIcon;
-
   const ANIMAL_ICONS = ['eagle', 'frog', 'dolphin', 'bat'];
   const iconIndex = ['A', 'B', 'C', 'D'].indexOf(optionLetter);
   const animalIcon = iconIndex >= 0 ? ANIMAL_ICONS[iconIndex] : 'eagle';
   const AnimalComponent = EMOJI_ICON_MAP[animalIcon] || EagleIcon;
 
-  const getBackgroundColor = () => {
-    if (correct === true) return '#E8F5E9';
-    if (correct === false) return '#FFEBEE';
-    if (selected) return '#E3F2FD';
-    return 'white';
-  };
-
   const getBorderColor = () => {
     if (correct === true) return '#4CAF50';
     if (correct === false) return '#F44336';
     if (selected) return '#2196F3';
-    return 'rgba(0, 0, 0, 0.08)';
+    return '#E0E0E0';
   };
 
-  const getTextColor = () => {
-    if (correct === true) return '#2E7D32';
-    if (correct === false) return '#C62828';
-    return COLORS.text.primary;
+  const getBackgroundColor = () => {
+    if (correct === true) return '#E8F5E9';
+    if (correct === false) return '#FFEBEE';
+    if (selected) return '#2196F3';
+    return 'white';
   };
 
   return (
@@ -263,31 +189,54 @@ export function QuizOption({
           backgroundColor: getBackgroundColor(),
           borderColor: getBorderColor(),
         },
-        selected && styles.quizSelected,
+        selected && correct === null && styles.quizSelected,
         style,
       ]}
     >
       <View style={styles.quizIconContainer}>
-        <AnimalComponent size={42} />
+        <AnimalComponent size={36} />
       </View>
       <Text
         style={[
           styles.quizLabel,
-          { color: getTextColor() },
+          selected && correct === null && { color: 'white' },
+          correct === true && { color: '#2E7D32' },
+          correct === false && { color: '#C62828' },
         ]}
       >
         {label}
       </Text>
       {correct === true && (
-        <View style={[styles.statusIcon, { backgroundColor: '#4CAF50' }]}>
-          <Check size={14} color="white" />
+        <View style={[styles.checkBadge, { backgroundColor: '#4CAF50' }]}>
+          <Check size={14} color="white" strokeWidth={3} />
         </View>
       )}
-      {correct === false && (
-        <View style={[styles.statusIcon, { backgroundColor: '#F44336' }]}>
-          <X size={14} color="white" />
-        </View>
-      )}
+    </TouchableOpacity>
+  );
+}
+
+/**
+ * Topic chip for horizontal scroll
+ */
+export function TopicChip({
+  label,
+  icon = 'sparkles',
+  selected = false,
+  onPress,
+  style,
+}) {
+  const IconComponent = EMOJI_ICON_MAP[icon] || SparkleIcon;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.chipContainer, selected && styles.chipSelected, style]}
+    >
+      <IconComponent size={24} />
+      <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -296,54 +245,88 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 50,
+    borderRadius: 16,
     borderWidth: 2,
-    marginVertical: 6,
+    marginVertical: 5,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   iconContainer: {
-    marginRight: 14,
+    marginRight: 12,
   },
   label: {
     flex: 1,
     fontFamily: 'Urbanist_600SemiBold',
+    color: COLORS.text.primary,
   },
   selectedShadow: {
-    shadowColor: COLORS.primary,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  checkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Quiz styles
+  quizContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 5,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quizSelected: {
+    shadowColor: '#2196F3',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  statusIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+  quizIconContainer: {
+    marginRight: 12,
   },
-  lockIcon: {
-    marginLeft: 8,
+  quizLabel: {
+    flex: 1,
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 16,
+    color: COLORS.text.primary,
   },
+
   // Chip styles
   chipContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 50,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderWidth: 2,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
-    marginRight: 10,
-    marginBottom: 10,
+    borderColor: '#E0E0E0',
+    marginRight: 8,
+    gap: 8,
   },
   chipSelected: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
-  },
-  chipIconWrapper: {
-    marginRight: 10,
   },
   chipLabel: {
     fontFamily: 'Urbanist_600SemiBold',
@@ -352,31 +335,5 @@ const styles = StyleSheet.create({
   },
   chipLabelSelected: {
     color: 'white',
-  },
-  // Quiz option styles
-  quizContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 2,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    marginVertical: 6,
-    backgroundColor: 'white',
-  },
-  quizSelected: {
-    shadowColor: '#2196F3',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  quizIconContainer: {
-    marginRight: 14,
-  },
-  quizLabel: {
-    flex: 1,
-    fontFamily: 'Urbanist_600SemiBold',
-    fontSize: 16,
   },
 });

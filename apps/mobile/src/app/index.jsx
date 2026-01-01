@@ -27,27 +27,33 @@ export default function SplashScreen() {
         .eq('status', 'active')
         .limit(1);
 
-      return { hasThread: threads && threads.length > 0, threadId: threads?.[0]?.id };
+      return {
+        hasThread: threads && threads.length > 0,
+        threadId: threads?.[0]?.id
+      };
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && isAuthenticated,
   });
 
   useEffect(() => {
     if (!isReady || !fontsLoaded) return;
 
-    // Auto-navigate after a short delay
+    // Wait for data to load
     const timer = setTimeout(() => {
-      if (data?.hasThread) {
-        // Returning user - go to Today's Path
+      if (!isAuthenticated) {
+        // Not logged in - go to auth
+        router.replace('/auth');
+      } else if (data?.hasThread) {
+        // Returning user with active thread - go to Today's Path
         router.replace({ pathname: '/home', params: { threadId: data.threadId } });
       } else {
-        // First-time user - go to onboarding
+        // Logged in but no thread - go to onboarding
         router.replace('/onboarding');
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearTimeout(timer);
-  }, [isReady, fontsLoaded, data]);
+  }, [isReady, fontsLoaded, isAuthenticated, data, isLoading]);
 
   if (!fontsLoaded) return null;
 

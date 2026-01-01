@@ -42,8 +42,9 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="skillcheck" />
+            <Stack.Screen name="auth" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="onboarding" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="skillcheck" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="home" />
             <Stack.Screen name="lesson" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="complete" options={{ animation: 'fade' }} />

@@ -2,58 +2,30 @@ import React, { useEffect } from 'react';
 import { View, Text, StatusBar, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
-import { supabase } from '@/utils/auth/supabase';
 
 export default function SplashScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { user, isReady, isAuthenticated } = useAuth();
-
-  // Check if user has an active learning thread
-  const { data, isLoading } = useQuery({
-    queryKey: ['activeThread', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { hasThread: false };
-
-      const { data: threads } = await supabase
-        .from('learning_threads')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .limit(1);
-
-      return {
-        hasThread: threads && threads.length > 0,
-        threadId: threads?.[0]?.id
-      };
-    },
-    enabled: !!user?.id && isAuthenticated,
-  });
+  const { isReady, isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!isReady || !fontsLoaded) return;
 
-    // Wait for data to load
     const timer = setTimeout(() => {
       if (!isAuthenticated) {
-        // Not logged in - go to auth
         router.replace('/auth');
-      } else if (data?.hasThread) {
-        // Returning user with active thread - go to Today's Path
-        router.replace({ pathname: '/home', params: { threadId: data.threadId } });
       } else {
-        // Logged in but no thread - go to onboarding
-        router.replace('/onboarding');
+        // Go to home - it handles showing courses or prompting to learn new
+        router.replace('/home');
       }
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [isReady, fontsLoaded, isAuthenticated, data, isLoading]);
+  }, [isReady, fontsLoaded, isAuthenticated]);
 
   if (!fontsLoaded) return null;
 

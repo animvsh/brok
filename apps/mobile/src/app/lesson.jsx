@@ -72,7 +72,7 @@ const WRONG_MESSAGES = ['Not quite...', 'Try again!', 'Almost!'];
 export default function LessonScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { threadId, nodeId } = useLocalSearchParams();
+  const { courseId, lessonId, skillId, mode } = useLocalSearchParams();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -149,7 +149,7 @@ export default function LessonScreen() {
       // Lesson complete
       router.replace({
         pathname: '/complete',
-        params: { threadId, nodeId, xp: xpEarned },
+        params: { courseId, skillId, xp: xpEarned },
       });
     }
   };

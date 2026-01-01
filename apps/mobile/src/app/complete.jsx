@@ -95,7 +95,7 @@ function Confetti({ delay, startX }) {
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { threadId, nodeId, xp } = useLocalSearchParams();
+  const { courseId, skillId, xp } = useLocalSearchParams();
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const badgeAnim1 = useRef(new Animated.Value(0)).current;
@@ -129,7 +129,11 @@ export default function CompleteScreen() {
   const currentStreak = 5;
 
   const handleContinue = () => {
-    router.replace({ pathname: '/home', params: { threadId } });
+    if (courseId) {
+      router.replace({ pathname: '/course', params: { courseId } });
+    } else {
+      router.replace('/home');
+    }
   };
 
   // Generate confetti

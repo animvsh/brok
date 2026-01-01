@@ -8,7 +8,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Animated,
   ScrollView,
@@ -29,8 +28,6 @@ import { useAuth } from '@/utils/auth';
 import { COLORS, GRADIENTS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
-
 // Topic options with icons
 const TOPICS = [
   { id: 'guitar', label: 'Guitar', icon: Music, color: '#FF8A65' },
@@ -47,7 +44,6 @@ export default function OnboardingScreen() {
 
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [customTopic, setCustomTopic] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -69,8 +65,8 @@ export default function OnboardingScreen() {
     ]).start();
   };
 
-  const handleContinue = async () => {
-    const topicToSend = selectedTopic === 'other' ? customTopic.trim() : selectedTopic;
+  const handleContinue = () => {
+    const topicToSend = selectedTopic === 'other' ? customTopic.trim() : TOPICS.find(t => t.id === selectedTopic)?.label || selectedTopic;
 
     if (!topicToSend) {
       Alert.alert('Pick a topic', 'What would you like to learn?');
@@ -82,41 +78,11 @@ export default function OnboardingScreen() {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_URL}/api/threads/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          input: topicToSend,
-          inputType: 'text',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.threadId) {
-        router.replace({
-          pathname: '/home',
-          params: { threadId: data.threadId },
-        });
-      } else {
-        throw new Error(data.error || 'Failed to create learning path');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert(
-        'Oops!',
-        error.message || 'Something went wrong. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLoading(false);
-    }
+    // Navigate to setup flow
+    router.push({
+      pathname: '/setup/intent',
+      params: { topic: topicToSend },
+    });
   };
 
   return (
@@ -213,43 +179,24 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             style={[
               styles.continueButton,
-              (!selectedTopic || loading) && styles.continueButtonDisabled,
+              !selectedTopic && styles.continueButtonDisabled,
             ]}
             onPress={handleContinue}
-            disabled={!selectedTopic || loading}
+            disabled={!selectedTopic}
           >
             <LinearGradient
-              colors={selectedTopic && !loading
+              colors={selectedTopic
                 ? [COLORS.primary, COLORS.primaryDark]
                 : ['#CCCCCC', '#AAAAAA']
               }
               style={styles.continueGradient}
             >
-              {loading ? (
-                <>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.continueText}>Building your path...</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.continueText}>Continue</Text>
-                  <ChevronRight size={20} color="#FFFFFF" />
-                </>
-              )}
+              <Text style={styles.continueText}>Continue</Text>
+              <ChevronRight size={20} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Loading overlay */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <BrokMascot size={120} mood="thinking" />
-          <Text style={styles.loadingTitle}>Building your path...</Text>
-          <Text style={styles.loadingSubtitle}>This will just take a moment</Text>
-          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
-        </View>
-      )}
     </View>
   );
 }
@@ -396,26 +343,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 17,
     color: '#FFFFFF',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  loadingTitle: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 22,
-    color: COLORS.text.primary,
-    marginTop: 24,
-    textAlign: 'center',
-  },
-  loadingSubtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 15,
-    color: COLORS.text.secondary,
-    marginTop: 8,
-    textAlign: 'center',
   },
 });

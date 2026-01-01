@@ -1,10 +1,10 @@
-import { useAuth } from "@/utils/auth";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useAuth } from '@/utils/auth';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,16 +40,13 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+          <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="create" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="skillcheck" />
             <Stack.Screen name="home" />
-            <Stack.Screen name="learn" />
-            <Stack.Screen name="complete" />
-            <Stack.Screen name="path" />
-            <Stack.Screen name="action" />
-            <Stack.Screen name="skillmap" />
-            <Stack.Screen name="recap" />
+            <Stack.Screen name="lesson" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="complete" options={{ animation: 'fade' }} />
           </Stack>
         </GestureHandlerRootView>
       </SafeAreaProvider>

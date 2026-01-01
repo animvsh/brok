@@ -1,224 +1,278 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StatusBar } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTheme } from "@/components/useTheme";
-import { useAppFonts } from "@/components/useFonts";
-import { Trophy, CheckCircle, Sparkles } from "lucide-react-native";
+import React, { useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StatusBar,
+  Animated,
+  StyleSheet,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Star, Flame, Check, ChevronRight, Coffee } from 'lucide-react-native';
+import { useAppFonts } from '@/components/useFonts';
+import { COLORS } from '@/components/theme/colors';
 
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
   const { fontsLoaded } = useAppFonts();
-  const params = useLocalSearchParams();
-  const queryClient = useQueryClient();
+  const { threadId, nodeId } = useLocalSearchParams();
 
-  const xp = parseInt(params.xp) || 0;
-  const correct = parseInt(params.correct) || 0;
-  const total = parseInt(params.total) || 1;
-  const moduleCompleted = params.moduleCompleted === "true";
-  const accuracy = Math.round((correct / total) * 100);
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const xpAnim = useRef(new Animated.Value(0)).current;
+  const streakAnim = useRef(new Animated.Value(0)).current;
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.stagger(150, [
+        Animated.spring(xpAnim, { toValue: 1, friction: 6, useNativeDriver: true }),
+        Animated.spring(streakAnim, { toValue: 1, friction: 6, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
+
+  if (!fontsLoaded) return null;
+
+  const xpEarned = 25;
+  const currentStreak = 3;
+  const lessonTitle = 'Arrays Basics';
 
   const handleContinue = () => {
-    queryClient.invalidateQueries(["activeCourse"]);
-    queryClient.invalidateQueries(["stats"]);
-    router.replace("/home");
+    router.replace({ pathname: '/home', params: { threadId } });
+  };
+
+  const handleTakeBreak = () => {
+    router.replace({ pathname: '/home', params: { threadId } });
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.background,
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-        paddingHorizontal: 20,
-      }}
-    >
-      <StatusBar barStyle={theme.isDark ? "light-content" : "dark-content"} />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" />
+      <LinearGradient
+        colors={['#F0FFF0', '#E8F5E9', '#FFFFFF']}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <View
-          style={{
-            width: 120,
-            height: 120,
-            backgroundColor: moduleCompleted ? "#FFD700" : "#4CAF50",
-            borderRadius: 60,
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 32,
-          }}
-        >
-          {moduleCompleted ? (
-            <Trophy size={60} color="#FFFFFF" />
-          ) : (
-            <CheckCircle size={60} color="#FFFFFF" />
-          )}
+      <View style={styles.content}>
+        <Animated.View style={[
+          styles.successCircle,
+          { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
+        ]}>
+          <Check size={48} color="#FFFFFF" strokeWidth={3} />
+        </Animated.View>
+
+        <Animated.Text style={[styles.title, { opacity: opacityAnim }]}>
+          Lesson Complete
+        </Animated.Text>
+
+        <Animated.Text style={[styles.subtitle, { opacity: opacityAnim }]}>
+          {lessonTitle}
+        </Animated.Text>
+
+        <View style={styles.statsRow}>
+          <Animated.View style={[
+            styles.statCard,
+            { transform: [{ scale: xpAnim }], opacity: xpAnim },
+          ]}>
+            <View style={[styles.statIcon, { backgroundColor: `${COLORS.xp.gold}20` }]}>
+              <Star size={24} color={COLORS.xp.gold} fill={COLORS.xp.gold} />
+            </View>
+            <Text style={styles.statValue}>+{xpEarned}</Text>
+            <Text style={styles.statLabel}>XP earned</Text>
+          </Animated.View>
+
+          <Animated.View style={[
+            styles.statCard,
+            { transform: [{ scale: streakAnim }], opacity: streakAnim },
+          ]}>
+            <View style={[styles.statIcon, { backgroundColor: `${COLORS.streak.fire}20` }]}>
+              <Flame size={24} color={COLORS.streak.fire} />
+            </View>
+            <Text style={styles.statValue}>{currentStreak}</Text>
+            <Text style={styles.statLabel}>day streak</Text>
+          </Animated.View>
         </View>
 
-        <Text
-          style={{
-            fontFamily: "Montserrat_700Bold",
-            fontSize: 32,
-            color: theme.text,
-            marginBottom: 12,
-            textAlign: "center",
-          }}
-        >
-          {moduleCompleted ? "Module Complete!" : "Great Session!"}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: "Urbanist_400Regular",
-            fontSize: 16,
-            color: theme.secondaryText,
-            marginBottom: 48,
-            textAlign: "center",
-          }}
-        >
-          {moduleCompleted
-            ? "You've mastered this module"
-            : "Keep up the momentum"}
-        </Text>
-
-        <View
-          style={{
-            width: "100%",
-            backgroundColor: theme.cardBackground,
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: theme.border,
-            padding: 24,
-            marginBottom: 32,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 20,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: "Urbanist_500Medium",
-                fontSize: 16,
-                color: theme.secondaryText,
-              }}
-            >
-              XP Earned
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Sparkles size={20} color="#FFD700" />
-              <Text
-                style={{
-                  fontFamily: "Montserrat_700Bold",
-                  fontSize: 28,
-                  color: theme.text,
-                }}
-              >
-                +{xp}
-              </Text>
+        <Animated.View style={[styles.progressContainer, { opacity: opacityAnim }]}>
+          <View style={styles.progressRing}>
+            <View style={styles.progressRingInner}>
+              <Text style={styles.progressPercent}>40%</Text>
+              <Text style={styles.progressLabel}>mastered</Text>
             </View>
           </View>
-
-          <View
-            style={{
-              height: 1,
-              backgroundColor: theme.border,
-              marginBottom: 20,
-            }}
-          />
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: "Urbanist_500Medium",
-                fontSize: 16,
-                color: theme.secondaryText,
-              }}
-            >
-              Accuracy
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Montserrat_600SemiBold",
-                fontSize: 20,
-                color: theme.text,
-              }}
-            >
-              {accuracy}%
-            </Text>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: "Urbanist_500Medium",
-                fontSize: 16,
-                color: theme.secondaryText,
-              }}
-            >
-              Questions
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Montserrat_600SemiBold",
-                fontSize: 20,
-                color: theme.text,
-              }}
-            >
-              {correct}/{total}
-            </Text>
-          </View>
-        </View>
+        </Animated.View>
       </View>
 
-      <TouchableOpacity
-        onPress={handleContinue}
-        style={{
-          backgroundColor: "#000000",
-          paddingVertical: 20,
-          borderRadius: 16,
-          alignItems: "center",
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: "Montserrat_600SemiBold",
-            fontSize: 16,
-            color: "#FFFFFF",
-          }}
-        >
-          Continue
-        </Text>
-      </TouchableOpacity>
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.continueGradient}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+            <ChevronRight size={20} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.breakButton} onPress={handleTakeBreak}>
+          <Coffee size={18} color={COLORS.text.secondary} />
+          <Text style={styles.breakText}>Take a break</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F0FFF0',
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  successCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.status.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: COLORS.status.success,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  title: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 32,
+    color: COLORS.text.primary,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 16,
+    color: COLORS.text.secondary,
+    marginBottom: 32,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 32,
+  },
+  statCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statValue: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    color: COLORS.text.primary,
+  },
+  statLabel: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    marginTop: 4,
+  },
+  progressContainer: {
+    marginTop: 16,
+  },
+  progressRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 8,
+    borderColor: `${COLORS.status.success}30`,
+    borderTopColor: COLORS.status.success,
+    borderRightColor: COLORS.status.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressRingInner: {
+    alignItems: 'center',
+  },
+  progressPercent: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    color: COLORS.text.primary,
+  },
+  progressLabel: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 12,
+    color: COLORS.text.secondary,
+  },
+  bottomContainer: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  continueButton: {
+    borderRadius: 50,
+    overflow: 'hidden',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  continueGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 8,
+  },
+  continueText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 17,
+    color: '#FFFFFF',
+  },
+  breakButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  breakText: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 15,
+    color: COLORS.text.secondary,
+  },
+});

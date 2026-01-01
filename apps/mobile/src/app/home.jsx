@@ -1,712 +1,428 @@
-import React from "react";
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
   StyleSheet,
-  Dimensions,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
+  ActivityIndicator,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Map,
-  ChevronRight,
-  Plus,
-  Sparkles,
-  Zap,
-  Lock,
-  Check,
+  Flame,
   Star,
   Play,
-} from "lucide-react-native";
-import { useAppFonts } from "@/components/useFonts";
-import { useAuth } from "@/utils/auth";
-import { supabase } from "@/utils/auth/supabase";
-import GradientBackground from "@/components/ui/GradientBackground";
-import BrokMascot from "@/components/mascot/BrokMascot";
-import FloatingClouds from "@/components/ui/FloatingClouds";
-import { StatsRow } from "@/components/ui/XPBadge";
-import { COLORS, GRADIENTS } from "@/components/theme/colors";
+  Check,
+  Lock,
+  BookOpen,
+  Brain,
+  Repeat,
+  Zap,
+} from 'lucide-react-native';
+import { useAppFonts } from '@/components/useFonts';
+import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
+import { COLORS } from '@/components/theme/colors';
 
-const { width } = Dimensions.get("window");
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// Node types with icons
+const NODE_TYPES = {
+  learn: { icon: BookOpen, color: COLORS.primary, label: 'Learn' },
+  practice: { icon: Brain, color: '#9C27B0', label: 'Practice' },
+  reinforce: { icon: Repeat, color: '#FF9800', label: 'Reinforce' },
+  check: { icon: Zap, color: '#4CAF50', label: 'Quick Check' },
+};
+
+// Sample path nodes (in real app, fetched from API based on mastery)
+const SAMPLE_PATH = [
+  { id: 1, type: 'learn', title: 'Arrays Basics', status: 'current', time: '3 min' },
+  { id: 2, type: 'practice', title: 'Array Operations', status: 'locked', time: '4 min' },
+  { id: 3, type: 'check', title: 'Quick Quiz', status: 'locked', time: '2 min' },
+  { id: 4, type: 'learn', title: 'Linked Lists', status: 'locked', time: '5 min' },
+  { id: 5, type: 'reinforce', title: 'Review Session', status: 'locked', time: '3 min' },
+];
+
+function PathNode({ node, index, onPress }) {
+  const nodeType = NODE_TYPES[node.type] || NODE_TYPES.learn;
+  const Icon = nodeType.icon;
+  const isCurrent = node.status === 'current';
+  const isComplete = node.status === 'complete';
+  const isLocked = node.status === 'locked';
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.nodeContainer,
+        isCurrent && styles.nodeContainerCurrent,
+        isLocked && styles.nodeContainerLocked,
+      ]}
+      onPress={() => !isLocked && onPress(node)}
+      disabled={isLocked}
+      activeOpacity={0.8}
+    >
+      {/* Connector line */}
+      {index > 0 && (
+        <View style={[
+          styles.connector,
+          isComplete && styles.connectorComplete,
+        ]} />
+      )}
+
+      {/* Node circle */}
+      <View style={[
+        styles.nodeCircle,
+        { backgroundColor: isLocked ? '#E0E0E0' : nodeType.color },
+        isCurrent && styles.nodeCircleCurrent,
+      ]}>
+        {isComplete ? (
+          <Check size={20} color="#FFFFFF" strokeWidth={3} />
+        ) : isLocked ? (
+          <Lock size={18} color="#9E9E9E" />
+        ) : (
+          <Icon size={20} color="#FFFFFF" />
+        )}
+      </View>
+
+      {/* Node content */}
+      <View style={styles.nodeContent}>
+        <Text style={[
+          styles.nodeTitle,
+          isLocked && styles.nodeTitleLocked,
+        ]}>
+          {node.title}
+        </Text>
+        <View style={styles.nodeMetaRow}>
+          <Text style={styles.nodeType}>{nodeType.label}</Text>
+          <Text style={styles.nodeDot}>·</Text>
+          <Text style={styles.nodeTime}>{node.time}</Text>
+        </View>
+      </View>
+
+      {/* Play button for current */}
+      {isCurrent && (
+        <View style={styles.playButton}>
+          <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
   const { user, session } = useAuth();
+  const { threadId } = useLocalSearchParams();
 
-  // Fetch user's learning threads
-  const { data: threadsData, isLoading } = useQuery({
-    queryKey: ["threads", user?.id],
+  // Fetch user stats
+  const { data: stats } = useQuery({
+    queryKey: ['userStats', user?.id],
     queryFn: async () => {
-      if (!user?.id) return { threads: [], stats: null };
-
-      const { data: threads, error: threadsError } = await supabase
-        .from("learning_threads")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .order("updated_at", { ascending: false });
-
-      if (threadsError) {
-        console.error("Threads fetch error:", threadsError);
-      }
-
-      const { data: stats } = await supabase
-        .from("user_progress")
-        .select("*")
-        .eq("user_id", user.id)
+      const { data } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user?.id)
         .single();
-
-      return { threads: threads || [], stats };
+      return data || { total_xp: 0, current_streak: 0 };
     },
     enabled: !!user?.id,
   });
 
-  const activeThread = threadsData?.threads?.[0];
-
-  const { data: masteryData } = useQuery({
-    queryKey: ["masterySummary", activeThread?.id],
+  // Fetch today's path
+  const { data: pathData, isLoading } = useQuery({
+    queryKey: ['todaysPath', threadId],
     queryFn: async () => {
-      if (!activeThread?.id || !session?.access_token) return null;
+      if (!threadId || !session?.access_token) return { nodes: SAMPLE_PATH };
 
-      const response = await fetch(
-        `${API_URL}/api/graphs/visualize?threadId=${activeThread.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+      try {
+        const response = await fetch(
+          `${API_URL}/api/threads/${threadId}/next`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          return { nodes: data.pathNodes || SAMPLE_PATH };
         }
-      );
-
-      if (!response.ok) return null;
-      return response.json();
+      } catch (e) {
+        console.error('Error fetching path:', e);
+      }
+      return { nodes: SAMPLE_PATH };
     },
-    enabled: !!activeThread?.id && !!session?.access_token,
+    enabled: !!user?.id,
   });
 
   if (!fontsLoaded) return null;
 
-  const stats = threadsData?.stats || {
-    total_xp: 0,
-    current_streak: 0,
-    skills_mastered: 0,
+  const xp = stats?.total_xp || 0;
+  const streak = stats?.current_streak || 0;
+  const pathNodes = pathData?.nodes || SAMPLE_PATH;
+  const totalTime = pathNodes.reduce((acc, n) => acc + parseInt(n.time), 0);
+
+  const handleNodePress = (node) => {
+    router.push({
+      pathname: '/lesson',
+      params: { threadId, nodeId: node.id },
+    });
   };
 
-  const threads = threadsData?.threads || [];
-  const summary = masteryData?.summary || {};
-  const nodes = masteryData?.nodes || [];
-
-  // Calculate level from XP (every 500 XP = 1 level)
-  const level = Math.floor((stats.total_xp || 0) / 500) + 1;
-
-  const handleContinue = () => {
-    if (activeThread) {
-      router.push({ pathname: "/action", params: { threadId: activeThread.id } });
-    }
-  };
-
-  const handleViewSkillMap = () => {
-    if (activeThread) {
-      router.push({ pathname: "/skillmap", params: { threadId: activeThread.id } });
-    }
-  };
-
-  const handleCreateNew = () => {
-    router.push("/create");
-  };
-
-  const handleNodePress = (node, isUnlocked) => {
-    if (isUnlocked && activeThread) {
-      router.push({ pathname: "/action", params: { threadId: activeThread.id, nodeId: node.id } });
-    }
-  };
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <GradientBackground variant="softBlue">
-        <View style={[styles.centered, { flex: 1 }]}>
-          <BrokMascot size={100} mood="thinking" />
-          <Text style={styles.loadingText}>Loading your journey...</Text>
-          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 16 }} />
-        </View>
-      </GradientBackground>
-    );
-  }
-
-  // Empty state - no threads
-  if (threads.length === 0) {
-    return (
-      <GradientBackground variant="warmSunset">
-        <StatusBar barStyle="dark-content" />
-        <FloatingClouds variant="bottom" />
-        <View style={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom }]}>
-          <View style={styles.centered}>
-            <BrokMascot size={180} mood="encouraging" />
-
-            <Text style={styles.emptyTitle}>Hey there!</Text>
-            <Text style={styles.emptySubtitle}>
-              Ready to start your learning adventure?{"\n"}
-              Let's master something amazing together!
-            </Text>
-
-            <TouchableOpacity onPress={handleCreateNew} style={styles.startButton}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.startButtonGradient}
-              >
-                <Sparkles size={22} color="white" />
-                <Text style={styles.startButtonText}>Start Learning</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </GradientBackground>
-    );
-  }
-
-  // Generate lesson path nodes based on skill graph
-  const lessonPath = nodes.length > 0
-    ? nodes.slice(0, 8).map((node, index) => ({
-        id: node.id,
-        name: node.name,
-        mastery: node.mastery_p || 0,
-        isMastered: node.mastery_p >= 0.9,
-        isLocked: index > 0 && nodes[index - 1]?.mastery_p < 0.7,
-        isCurrent: !node.mastery_p || node.mastery_p < 0.9,
-      }))
-    : [
-        { id: 1, name: "Basics", mastery: 1, isMastered: true },
-        { id: 2, name: "Fundamentals", mastery: 0.75, isCurrent: true },
-        { id: 3, name: "Practice", mastery: 0, isLocked: true },
-        { id: 4, name: "Advanced", mastery: 0, isLocked: true },
-        { id: 5, name: "Mastery", mastery: 0, isLocked: true },
-      ];
-
-  // Find current (in-progress) node
-  const currentNodeIndex = lessonPath.findIndex(n => n.isCurrent && !n.isLocked);
-
-  // Main home view with vertical lesson path
   return (
-    <GradientBackground variant="softBlue" showBubbles={false}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
-      <FloatingClouds variant="scattered" />
+      <LinearGradient
+        colors={['#F8FAFF', '#FFFFFF']}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: insets.top + 16,
-          paddingBottom: insets.bottom + 100,
-          paddingHorizontal: 20,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header with Stats */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>Welcome back!</Text>
-            <Text style={styles.threadTitle}>{activeThread?.title || "Your Journey"}</Text>
+      {/* Header with stats */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Today's Path</Text>
+          <Text style={styles.timeEstimate}>{totalTime} min total</Text>
+        </View>
+
+        <View style={styles.statsRow}>
+          {/* Streak */}
+          <View style={styles.statBadge}>
+            <Flame size={16} color={COLORS.streak.fire} />
+            <Text style={styles.statValue}>{streak}</Text>
           </View>
-          <StatsRow xp={stats.total_xp} streak={stats.current_streak} level={level} />
-        </View>
 
-        {/* Lesson Path Title */}
-        <View style={styles.pathHeader}>
-          <View style={styles.pathBadge}>
-            <Star size={14} color={COLORS.xp.gold} />
-            <Text style={styles.pathBadgeText}>LEARNING PATH</Text>
+          {/* XP */}
+          <View style={[styles.statBadge, styles.statBadgeXP]}>
+            <Star size={16} color={COLORS.xp.gold} />
+            <Text style={styles.statValue}>{xp}</Text>
           </View>
-          <TouchableOpacity onPress={handleViewSkillMap} style={styles.mapButton}>
-            <Map size={18} color={COLORS.primary} />
-            <Text style={styles.mapButtonText}>Full Map</Text>
-          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Vertical Lesson Path */}
-        <View style={styles.lessonPath}>
-          {lessonPath.map((node, index) => {
-            const isUnlocked = !node.isLocked;
-            const isCurrent = currentNodeIndex === index;
-            const isMastered = node.isMastered;
-
-            // Alternate left/right positioning for curved path effect
-            const isLeft = index % 2 === 0;
-
-            return (
-              <View key={node.id} style={styles.pathNodeContainer}>
-                {/* Connecting line */}
-                {index < lessonPath.length - 1 && (
-                  <View
-                    style={[
-                      styles.pathLine,
-                      isLeft ? styles.pathLineLeft : styles.pathLineRight,
-                      node.isMastered && styles.pathLineCompleted,
-                    ]}
-                  />
-                )}
-
-                {/* Node */}
-                <TouchableOpacity
-                  onPress={() => handleNodePress(node, isUnlocked)}
-                  disabled={!isUnlocked}
-                  style={[
-                    styles.pathNode,
-                    isLeft ? styles.pathNodeLeft : styles.pathNodeRight,
-                    isMastered && styles.pathNodeMastered,
-                    isCurrent && styles.pathNodeCurrent,
-                    node.isLocked && styles.pathNodeLocked,
-                  ]}
-                >
-                  <View style={[
-                    styles.nodeCircle,
-                    isMastered && styles.nodeCircleMastered,
-                    isCurrent && styles.nodeCircleCurrent,
-                    node.isLocked && styles.nodeCircleLocked,
-                  ]}>
-                    {isMastered ? (
-                      <Check size={24} color="white" strokeWidth={3} />
-                    ) : node.isLocked ? (
-                      <Lock size={20} color={COLORS.text.muted} />
-                    ) : isCurrent ? (
-                      <Play size={20} color="white" fill="white" />
-                    ) : (
-                      <Star size={20} color={COLORS.xp.gold} />
-                    )}
-                  </View>
-                  <View style={styles.nodeInfo}>
-                    <Text style={[
-                      styles.nodeName,
-                      node.isLocked && styles.nodeNameLocked,
-                    ]}>
-                      {node.name}
-                    </Text>
-                    {!node.isLocked && (
-                      <View style={styles.nodeProgress}>
-                        <View style={styles.nodeProgressBar}>
-                          <View
-                            style={[
-                              styles.nodeProgressFill,
-                              { width: `${Math.round(node.mastery * 100)}%` },
-                              isMastered && styles.nodeProgressFillMastered,
-                            ]}
-                          />
-                        </View>
-                        <Text style={styles.nodeProgressText}>
-                          {Math.round(node.mastery * 100)}%
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-
-                {/* Current node mascot */}
-                {isCurrent && (
-                  <View style={[
-                    styles.currentMascot,
-                    isLeft ? styles.currentMascotRight : styles.currentMascotLeft,
-                  ]}>
-                    <BrokMascot size={60} mood="encouraging" />
-                  </View>
-                )}
-              </View>
-            );
-          })}
+      {/* Loading state */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Path nodes */}
+          {pathNodes.map((node, index) => (
+            <PathNode
+              key={node.id}
+              node={node}
+              index={index}
+              onPress={handleNodePress}
+            />
+          ))}
+        </ScrollView>
+      )}
 
-        {/* Continue Button */}
-        <TouchableOpacity onPress={handleContinue} style={styles.continueButton}>
+      {/* Start button */}
+      <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
+        <TouchableOpacity
+          style={styles.startButton}
+          onPress={() => {
+            const currentNode = pathNodes.find(n => n.status === 'current');
+            if (currentNode) handleNodePress(currentNode);
+          }}
+        >
           <LinearGradient
             colors={[COLORS.primary, COLORS.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.continueGradient}
+            style={styles.startGradient}
           >
-            <Zap size={22} color="white" />
-            <Text style={styles.continueText}>Continue Learning</Text>
+            <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
+            <Text style={styles.startText}>Start Learning</Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity onPress={handleCreateNew} style={styles.actionCard}>
-            <LinearGradient
-              colors={[COLORS.accent.purple, '#9B59B6']}
-              style={styles.actionIconContainer}
-            >
-              <Plus size={24} color="white" />
-            </LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.actionTitle}>New Path</Text>
-              <Text style={styles.actionSubtitle}>Start something new</Text>
-            </View>
-            <ChevronRight size={20} color={COLORS.text.muted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Other Learning Paths */}
-        {threads.length > 1 && (
-          <View style={styles.otherPaths}>
-            <Text style={styles.sectionTitle}>Other Paths</Text>
-            {threads.slice(1, 4).map((thread) => (
-              <TouchableOpacity
-                key={thread.id}
-                onPress={() => router.push({ pathname: "/action", params: { threadId: thread.id } })}
-                style={styles.threadCard}
-              >
-                <View style={styles.threadIcon}>
-                  <Zap size={18} color={COLORS.accent.orange} />
-                </View>
-                <Text style={styles.threadName} numberOfLines={1}>{thread.title}</Text>
-                <ChevronRight size={18} color={COLORS.text.muted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </GradientBackground>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFF',
   },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
-  loadingText: {
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 16,
+  greeting: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 28,
     color: COLORS.text.primary,
-    marginTop: 20,
   },
-  emptyTitle: {
-    fontFamily: "Montserrat_700Bold",
-    fontSize: 32,
-    color: COLORS.text.primary,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  emptySubtitle: {
-    fontFamily: "Urbanist_500Medium",
-    fontSize: 16,
+  timeEstimate: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 14,
     color: COLORS.text.secondary,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
+    marginTop: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  statBadgeXP: {
+    backgroundColor: `${COLORS.xp.gold}15`,
+    borderColor: `${COLORS.xp.gold}30`,
+  },
+  statValue: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 14,
+    color: COLORS.text.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  nodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    position: 'relative',
+  },
+  nodeContainerCurrent: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  nodeContainerLocked: {
+    backgroundColor: '#FAFAFA',
+    opacity: 0.7,
+  },
+  connector: {
+    position: 'absolute',
+    left: 35,
+    top: -12,
+    width: 2,
+    height: 12,
+    backgroundColor: '#E0E0E0',
+  },
+  connectorComplete: {
+    backgroundColor: COLORS.status.success,
+  },
+  nodeCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  nodeCircleCurrent: {
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  nodeContent: {
+    flex: 1,
+  },
+  nodeTitle: {
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 16,
+    color: COLORS.text.primary,
+    marginBottom: 4,
+  },
+  nodeTitleLocked: {
+    color: COLORS.text.muted,
+  },
+  nodeMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nodeType: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: COLORS.text.secondary,
+  },
+  nodeDot: {
+    color: COLORS.text.muted,
+    marginHorizontal: 6,
+  },
+  nodeTime: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: COLORS.text.muted,
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    backgroundColor: 'rgba(255,255,255,0.95)',
   },
   startButton: {
     borderRadius: 50,
-    overflow: "hidden",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  startButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    paddingHorizontal: 36,
-    gap: 10,
-  },
-  startButtonText: {
-    fontFamily: "Montserrat_700Bold",
-    fontSize: 18,
-    color: "white",
-  },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  greeting: {
-    fontFamily: "Urbanist_500Medium",
-    fontSize: 14,
-    color: COLORS.text.secondary,
-  },
-  threadTitle: {
-    fontFamily: "Montserrat_700Bold",
-    fontSize: 22,
-    color: COLORS.text.primary,
-    marginTop: 4,
-  },
-
-  // Path Header
-  pathHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  pathBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: `${COLORS.xp.gold}20`,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  pathBadgeText: {
-    fontFamily: "Montserrat_700Bold",
-    fontSize: 11,
-    color: COLORS.xp.gold,
-    letterSpacing: 0.5,
-  },
-  mapButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  mapButtonText: {
-    fontFamily: "Urbanist_600SemiBold",
-    fontSize: 14,
-    color: COLORS.primary,
-  },
-
-  // Lesson Path
-  lessonPath: {
-    paddingVertical: 10,
-  },
-  pathNodeContainer: {
-    position: "relative",
-    marginBottom: 16,
-    minHeight: 80,
-  },
-  pathLine: {
-    position: "absolute",
-    width: 3,
-    height: 60,
-    backgroundColor: "#E0E0E0",
-    top: 50,
-    borderRadius: 2,
-  },
-  pathLineLeft: {
-    left: 60,
-  },
-  pathLineRight: {
-    right: 60,
-  },
-  pathLineCompleted: {
-    backgroundColor: COLORS.status.success,
-  },
-  pathNode: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 14,
-    gap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    maxWidth: width * 0.75,
-  },
-  pathNodeLeft: {
-    alignSelf: "flex-start",
-  },
-  pathNodeRight: {
-    alignSelf: "flex-end",
-  },
-  pathNodeMastered: {
-    borderWidth: 2,
-    borderColor: COLORS.status.success,
-  },
-  pathNodeCurrent: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.2,
-  },
-  pathNodeLocked: {
-    opacity: 0.6,
-    backgroundColor: "#F5F5F5",
-  },
-  nodeCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F0F0F0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  nodeCircleMastered: {
-    backgroundColor: COLORS.status.success,
-  },
-  nodeCircleCurrent: {
-    backgroundColor: COLORS.primary,
-  },
-  nodeCircleLocked: {
-    backgroundColor: "#E0E0E0",
-  },
-  nodeInfo: {
-    flex: 1,
-  },
-  nodeName: {
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 15,
-    color: COLORS.text.primary,
-    marginBottom: 6,
-  },
-  nodeNameLocked: {
-    color: COLORS.text.muted,
-  },
-  nodeProgress: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  nodeProgressBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: "#E8F5E9",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  nodeProgressFill: {
-    height: "100%",
-    backgroundColor: COLORS.primary,
-    borderRadius: 3,
-  },
-  nodeProgressFillMastered: {
-    backgroundColor: COLORS.status.success,
-  },
-  nodeProgressText: {
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 12,
-    color: COLORS.text.secondary,
-    width: 36,
-    textAlign: "right",
-  },
-  currentMascot: {
-    position: "absolute",
-    top: 0,
-  },
-  currentMascotRight: {
-    left: -10,
-  },
-  currentMascotLeft: {
-    right: -10,
-  },
-
-  // Continue Button
-  continueButton: {
-    borderRadius: 50,
-    overflow: "hidden",
-    marginTop: 10,
-    marginBottom: 24,
+    overflow: 'hidden',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  continueGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  startGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 18,
     gap: 10,
   },
-  continueText: {
-    fontFamily: "Montserrat_700Bold",
+  startText: {
+    fontFamily: 'Montserrat_600SemiBold',
     fontSize: 17,
-    color: "white",
-  },
-
-  // Quick Actions
-  quickActions: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  actionCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  actionTitle: {
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 15,
-    color: COLORS.text.primary,
-  },
-  actionSubtitle: {
-    fontFamily: "Urbanist_400Regular",
-    fontSize: 13,
-    color: COLORS.text.secondary,
-    marginTop: 2,
-  },
-
-  // Other Paths
-  otherPaths: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontFamily: "Montserrat_600SemiBold",
-    fontSize: 16,
-    color: COLORS.text.primary,
-    marginBottom: 12,
-  },
-  threadCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  threadIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: `${COLORS.accent.orange}20`,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  threadName: {
-    flex: 1,
-    fontFamily: "Urbanist_600SemiBold",
-    fontSize: 15,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
 });

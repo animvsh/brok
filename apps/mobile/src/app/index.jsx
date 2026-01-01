@@ -1,170 +1,112 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StatusBar } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { useAppFonts } from "@/components/useFonts";
-import { Sparkles } from "lucide-react-native";
-import { useAuth } from "@/utils/auth";
-import { supabase } from "@/utils/auth/supabase";
+import React, { useEffect } from 'react';
+import { View, Text, StatusBar, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Sparkles } from 'lucide-react-native';
+import { useAppFonts } from '@/components/useFonts';
+import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://iqqkdhifygfrqpxedtgk.supabase.co/functions/v1';
-
-export default function OnboardingScreen() {
+export default function SplashScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
   const { user, isReady, isAuthenticated } = useAuth();
 
-  // Check if user has an active course
-  const { data } = useQuery({
-    queryKey: ["activeCourse", user?.id],
+  // Check if user has an active learning thread
+  const { data, isLoading } = useQuery({
+    queryKey: ['activeThread', user?.id],
     queryFn: async () => {
-      if (!user?.id) return { course: null };
+      if (!user?.id) return { hasThread: false };
 
-      // Query directly from Supabase
-      const { data: progress } = await supabase
-        .from('user_progress')
-        .select('*, courses(*)')
+      const { data: threads } = await supabase
+        .from('learning_threads')
+        .select('id')
         .eq('user_id', user.id)
-        .single();
+        .eq('status', 'active')
+        .limit(1);
 
-      return { course: progress?.courses || null };
+      return { hasThread: threads && threads.length > 0, threadId: threads?.[0]?.id };
     },
     enabled: !!user?.id,
   });
 
-  if (!fontsLoaded || !isReady) {
-    return null;
-  }
+  useEffect(() => {
+    if (!isReady || !fontsLoaded) return;
 
-  // If user has active course, redirect to home
-  if (data?.course) {
-    router.replace("/home");
-    return null;
-  }
+    // Auto-navigate after a short delay
+    const timer = setTimeout(() => {
+      if (data?.hasThread) {
+        // Returning user - go to Today's Path
+        router.replace({ pathname: '/home', params: { threadId: data.threadId } });
+      } else {
+        // First-time user - go to onboarding
+        router.replace('/onboarding');
+      }
+    }, 1500);
 
-  const handleStart = () => {
-    router.push("/create");
-  };
+    return () => clearTimeout(timer);
+  }, [isReady, fontsLoaded, data]);
+
+  if (!fontsLoaded) return null;
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#000000",
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom,
-        paddingLeft: Math.max(insets.left, 10),
-        paddingRight: Math.max(insets.right, 10),
-      }}
-    >
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+      <LinearGradient
+        colors={['#1A1A2E', '#16213E', '#0F0F1A']}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View
-        style={{
-          marginTop: 80,
-          alignItems: "center",
-        }}
-      >
-        <View
-          style={{
-            width: 100,
-            height: 100,
-            backgroundColor: "#FFFFFF",
-            borderRadius: 24,
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 60,
-          }}
-        >
-          <Sparkles size={50} color="#000000" />
+      <View style={[styles.content, { paddingTop: insets.top }]}>
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logoBox}>
+            <Sparkles size={40} color="#1A1A2E" />
+          </View>
         </View>
-      </View>
 
-      <View
-        style={{
-          paddingHorizontal: 20,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: "Montserrat_700Bold",
-            fontSize: 52,
-            color: "#FFFFFF",
-            lineHeight: 56,
-            letterSpacing: 1,
-            marginBottom: 24,
-          }}
-        >
-          BROK
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: "Urbanist_400Regular",
-            fontSize: 18,
-            color: "#CCCCCC",
-            lineHeight: 28,
-            letterSpacing: 0.3,
-            marginBottom: 16,
-          }}
-        >
-          A dynamic, mobile-first learning app.
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: "Urbanist_400Regular",
-            fontSize: 16,
-            color: "#999999",
-            lineHeight: 24,
-            letterSpacing: 0.2,
-          }}
-        >
-          Courses that adapt to you. Learning that feels natural. Progress
-          that's always visible.
-        </Text>
-      </View>
-
-      <View style={{ flex: 1 }} />
-
-      <View
-        style={{
-          paddingHorizontal: 20,
-          paddingBottom: 40,
-        }}
-      >
-        <TouchableOpacity
-          onPress={handleStart}
-          style={{
-            backgroundColor: "#FFFFFF",
-            paddingHorizontal: 48,
-            paddingVertical: 20,
-            borderRadius: 30,
-            alignItems: "center",
-            shadowColor: "#000",
-            shadowOffset: {
-              width: 0,
-              height: 4,
-            },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 5,
-          }}
-          activeOpacity={0.9}
-        >
-          <Text
-            style={{
-              fontFamily: "Montserrat_600SemiBold",
-              fontSize: 18,
-              color: "#000000",
-              letterSpacing: 0.5,
-            }}
-          >
-            Start Learning
-          </Text>
-        </TouchableOpacity>
+        {/* Brand name */}
+        <Text style={styles.brandName}>BROK</Text>
+        <Text style={styles.tagline}>learn anything</Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1A1A2E',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    marginBottom: 32,
+  },
+  logoBox: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  brandName: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 48,
+    color: '#FFFFFF',
+    letterSpacing: 4,
+    marginBottom: 8,
+  },
+  tagline: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
+    letterSpacing: 2,
+  },
+});

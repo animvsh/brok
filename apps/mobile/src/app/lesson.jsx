@@ -11,65 +11,63 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Check, ChevronRight, Lightbulb } from 'lucide-react-native';
+import { X, Check, ChevronRight, Star, Bird, Leaf } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { COLORS } from '@/components/theme/colors';
+import BrokMascot from '@/components/mascot/BrokMascot';
 
-// Sample lesson content (in real app, fetched from API)
+// Sample lesson content
 const SAMPLE_LESSON = {
-  title: 'Arrays Basics',
+  title: 'What is Photosynthesis?',
   steps: [
     {
       id: 1,
-      type: 'explain',
+      type: 'mcq',
       content: {
-        title: 'What is an Array?',
-        text: 'An array is a collection of items stored at contiguous memory locations. Think of it like a row of boxes, each with a number (index) starting from 0.',
-        highlight: 'Arrays let you store multiple values in a single variable.',
+        question: 'Which one is a mammal?',
+        options: [
+          { text: 'Eagle', icon: Bird },
+          { text: 'Frog', icon: Leaf },
+          { text: 'Dolphin', icon: null },
+          { text: 'Bat', icon: Bird },
+        ],
+        correct: 2,
       },
     },
     {
       id: 2,
       type: 'mcq',
       content: {
-        question: 'What index does the first element of an array have?',
-        options: ['0', '1', '-1', 'None'],
-        correct: 0,
+        question: 'What is Photosynthesis?',
+        options: [
+          { text: 'A type of animal', icon: null },
+          { text: 'How plants make energy', icon: Leaf },
+          { text: 'A chemical reaction', icon: null },
+          { text: 'None of the above', icon: null },
+        ],
+        correct: 1,
       },
     },
     {
       id: 3,
-      type: 'explain',
-      content: {
-        title: 'Array Access',
-        text: 'You can access any element instantly using its index. This is called O(1) or "constant time" access.',
-        highlight: 'arr[0] gives you the first element.',
-      },
-    },
-    {
-      id: 4,
-      type: 'truefalse',
-      content: {
-        statement: 'Arrays can only store numbers.',
-        correct: false,
-        explanation: 'Arrays can store any type of data: numbers, strings, objects, even other arrays!',
-      },
-    },
-    {
-      id: 5,
       type: 'mcq',
       content: {
-        question: 'What is the time complexity of accessing an element by index?',
-        options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'],
-        correct: 0,
+        question: 'Which gas do plants absorb?',
+        options: [
+          { text: 'Oxygen', icon: null },
+          { text: 'Nitrogen', icon: null },
+          { text: 'Carbon Dioxide', icon: Leaf },
+          { text: 'Hydrogen', icon: null },
+        ],
+        correct: 2,
       },
     },
   ],
 };
 
 // Feedback messages
-const CORRECT_MESSAGES = ['nice', 'clean', 'exactly', 'perfect'];
-const WRONG_MESSAGES = ['not quite', 'try again', 'almost'];
+const CORRECT_MESSAGES = ['You got it!', 'Perfect!', 'Nice one!', 'Exactly!'];
+const WRONG_MESSAGES = ['Not quite...', 'Try again!', 'Almost!'];
 
 export default function LessonScreen() {
   const insets = useSafeAreaInsets();
@@ -80,10 +78,22 @@ export default function LessonScreen() {
   const [selected, setSelected] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const mascotAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Mascot entrance animation
+    Animated.spring(mascotAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+  }, [currentStep]);
 
   if (!fontsLoaded) return null;
 
@@ -95,26 +105,23 @@ export default function LessonScreen() {
     router.back();
   };
 
-  const handleAnswer = (answer) => {
+  const handleAnswer = (index) => {
     if (showResult) return;
-    setSelected(answer);
+    setSelected(index);
 
-    const correct = step.type === 'truefalse'
-      ? answer === step.content.correct
-      : answer === step.content.correct;
-
+    const correct = index === step.content.correct;
     setIsCorrect(correct);
 
     setTimeout(() => {
       setShowResult(true);
 
       if (correct) {
-        // Glow animation
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }).start();
+        setXpEarned((prev) => prev + 15);
+        // Bounce animation
+        Animated.sequence([
+          Animated.spring(bounceAnim, { toValue: 1, friction: 4, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start();
       } else {
         // Shake animation
         Animated.sequence([
@@ -134,7 +141,7 @@ export default function LessonScreen() {
         setSelected(null);
         setShowResult(false);
         setIsCorrect(false);
-        glowAnim.setValue(0);
+        mascotAnim.setValue(0);
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       });
@@ -142,158 +149,28 @@ export default function LessonScreen() {
       // Lesson complete
       router.replace({
         pathname: '/complete',
-        params: { threadId, nodeId },
+        params: { threadId, nodeId, xp: xpEarned },
       });
     }
   };
 
-  const renderExplain = () => (
-    <View style={styles.explainContainer}>
-      <Text style={styles.explainTitle}>{step.content.title}</Text>
-      <Text style={styles.explainText}>{step.content.text}</Text>
-      {step.content.highlight && (
-        <View style={styles.highlightBox}>
-          <Lightbulb size={18} color={COLORS.xp.gold} />
-          <Text style={styles.highlightText}>{step.content.highlight}</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderMCQ = () => (
-    <View style={styles.mcqContainer}>
-      <Text style={styles.questionText}>{step.content.question}</Text>
-      <View style={styles.optionsContainer}>
-        {step.content.options.map((option, index) => {
-          const isSelected = selected === index;
-          const isCorrectOption = index === step.content.correct;
-
-          let backgroundColor = '#FFFFFF';
-          let borderColor = '#E8E8E8';
-
-          if (showResult) {
-            if (isCorrectOption) {
-              backgroundColor = '#E8F5E9';
-              borderColor = '#4CAF50';
-            } else if (isSelected && !isCorrect) {
-              backgroundColor = '#FFEBEE';
-              borderColor = '#F44336';
-            }
-          } else if (isSelected) {
-            borderColor = COLORS.primary;
-            backgroundColor = `${COLORS.primary}08`;
-          }
-
-          return (
-            <Animated.View
-              key={index}
-              style={{ transform: [{ translateX: isSelected && !isCorrect && showResult ? shakeAnim : 0 }] }}
-            >
-              <TouchableOpacity
-                style={[styles.optionButton, { backgroundColor, borderColor }]}
-                onPress={() => handleAnswer(index)}
-                disabled={showResult}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.optionText,
-                  showResult && isCorrectOption && { color: '#2E7D32' },
-                  showResult && isSelected && !isCorrect && { color: '#C62828' },
-                ]}>
-                  {option}
-                </Text>
-                {showResult && isCorrectOption && (
-                  <Check size={20} color="#4CAF50" strokeWidth={3} />
-                )}
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  const renderTrueFalse = () => (
-    <View style={styles.tfContainer}>
-      <Text style={styles.questionText}>{step.content.statement}</Text>
-      <View style={styles.tfButtonsRow}>
-        {[true, false].map((value) => {
-          const isSelected = selected === value;
-          const isCorrectOption = value === step.content.correct;
-
-          let backgroundColor = '#FFFFFF';
-          let borderColor = '#E8E8E8';
-
-          if (showResult) {
-            if (isCorrectOption) {
-              backgroundColor = '#E8F5E9';
-              borderColor = '#4CAF50';
-            } else if (isSelected && !isCorrect) {
-              backgroundColor = '#FFEBEE';
-              borderColor = '#F44336';
-            }
-          } else if (isSelected) {
-            borderColor = COLORS.primary;
-            backgroundColor = `${COLORS.primary}08`;
-          }
-
-          return (
-            <TouchableOpacity
-              key={String(value)}
-              style={[styles.tfButton, { backgroundColor, borderColor }]}
-              onPress={() => handleAnswer(value)}
-              disabled={showResult}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.tfButtonText,
-                showResult && isCorrectOption && { color: '#2E7D32' },
-                showResult && isSelected && !isCorrect && { color: '#C62828' },
-              ]}>
-                {value ? 'True' : 'False'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      {showResult && step.content.explanation && (
-        <View style={styles.explanationBox}>
-          <Text style={styles.explanationText}>{step.content.explanation}</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderFeedback = () => {
-    if (!showResult || step.type === 'explain') return null;
-
-    const message = isCorrect
-      ? CORRECT_MESSAGES[Math.floor(Math.random() * CORRECT_MESSAGES.length)]
-      : WRONG_MESSAGES[Math.floor(Math.random() * WRONG_MESSAGES.length)];
-
-    return (
-      <Animated.View style={[
-        styles.feedbackContainer,
-        isCorrect ? styles.feedbackCorrect : styles.feedbackWrong,
-        { opacity: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }) },
-      ]}>
-        <Text style={[
-          styles.feedbackText,
-          { color: isCorrect ? '#2E7D32' : '#C62828' },
-        ]}>
-          {message}
-        </Text>
-      </Animated.View>
-    );
-  };
+  const feedbackMessage = isCorrect
+    ? CORRECT_MESSAGES[Math.floor(Math.random() * CORRECT_MESSAGES.length)]
+    : WRONG_MESSAGES[Math.floor(Math.random() * WRONG_MESSAGES.length)];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={['#F8FAFF', '#FFFFFF']}
+        colors={['#E0F4FF', '#D5E5FF', '#E8D5FF', '#FFE5EC']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* Cloud decorations */}
+      <View style={[styles.cloud, styles.cloud1]} />
+      <View style={[styles.cloud, styles.cloud2]} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -313,20 +190,136 @@ export default function LessonScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {step.type === 'explain' && renderExplain()}
-          {step.type === 'mcq' && renderMCQ()}
-          {step.type === 'truefalse' && renderTrueFalse()}
+          {/* Question */}
+          <Text style={styles.questionText}>{step.content.question}</Text>
+
+          {/* Options */}
+          <View style={styles.optionsContainer}>
+            {step.content.options.map((option, index) => {
+              const isSelected = selected === index;
+              const isCorrectOption = index === step.content.correct;
+              const Icon = option.icon;
+
+              let backgroundColor = '#FFFFFF';
+              let borderColor = 'transparent';
+              let textColor = COLORS.text.primary;
+
+              if (showResult) {
+                if (isCorrectOption) {
+                  backgroundColor = '#DCFCE7';
+                  borderColor = '#22C55E';
+                  textColor = '#166534';
+                } else if (isSelected && !isCorrect) {
+                  backgroundColor = '#FEE2E2';
+                  borderColor = '#EF4444';
+                  textColor = '#991B1B';
+                }
+              } else if (isSelected) {
+                backgroundColor = '#EEF2FF';
+                borderColor = COLORS.primary;
+              }
+
+              return (
+                <Animated.View
+                  key={index}
+                  style={{
+                    transform: [
+                      { translateX: isSelected && !isCorrect && showResult ? shakeAnim : 0 },
+                      { scale: isCorrect && isCorrectOption && showResult
+                        ? bounceAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 1.05],
+                          })
+                        : 1
+                      },
+                    ],
+                  }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.optionButton,
+                      { backgroundColor, borderColor, borderWidth: borderColor !== 'transparent' ? 2 : 0 },
+                    ]}
+                    onPress={() => handleAnswer(index)}
+                    disabled={showResult}
+                    activeOpacity={0.8}
+                  >
+                    {Icon && (
+                      <View style={styles.optionIcon}>
+                        <Icon size={18} color={textColor} />
+                      </View>
+                    )}
+                    {showResult && isCorrectOption && (
+                      <View style={styles.checkIcon}>
+                        <Check size={16} color="#22C55E" strokeWidth={3} />
+                      </View>
+                    )}
+                    <Text style={[styles.optionText, { color: textColor }]}>
+                      {option.text}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+          </View>
+
+          {/* Helper text */}
+          <Text style={styles.helperText}>
+            No stress — this just helps me help you 🐸
+          </Text>
         </Animated.View>
 
-        {renderFeedback()}
+        {/* Mascot */}
+        <Animated.View
+          style={[
+            styles.mascotContainer,
+            {
+              transform: [
+                {
+                  scale: mascotAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1],
+                  }),
+                },
+              ],
+              opacity: mascotAnim,
+            },
+          ]}
+        >
+          <BrokMascot
+            size={140}
+            mood={showResult ? (isCorrect ? 'celebrating' : 'encouraging') : 'happy'}
+          />
+        </Animated.View>
+
+        {/* Feedback */}
+        {showResult && (
+          <View style={[
+            styles.feedbackContainer,
+            isCorrect ? styles.feedbackCorrect : styles.feedbackWrong,
+          ]}>
+            <Text style={[
+              styles.feedbackText,
+              { color: isCorrect ? '#166534' : '#991B1B' },
+            ]}>
+              {feedbackMessage}
+            </Text>
+            {isCorrect && (
+              <View style={styles.xpBadge}>
+                <Star size={14} color="#FFD700" fill="#FFD700" />
+                <Text style={styles.xpText}>+15 XP</Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Continue button */}
-      {(step.type === 'explain' || showResult) && (
+      {showResult && (
         <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
             <LinearGradient
-              colors={isCorrect || step.type === 'explain' ? [COLORS.primary, COLORS.primaryDark] : ['#9E9E9E', '#757575']}
+              colors={isCorrect ? ['#22C55E', '#16A34A'] : [COLORS.primary, COLORS.primaryDark]}
               style={styles.continueGradient}
             >
               <Text style={styles.continueText}>
@@ -344,7 +337,24 @@ export default function LessonScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
+    backgroundColor: '#E0F4FF',
+  },
+  cloud: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 100,
+  },
+  cloud1: {
+    width: 120,
+    height: 50,
+    top: 120,
+    right: -30,
+  },
+  cloud2: {
+    width: 80,
+    height: 35,
+    bottom: 200,
+    left: -20,
   },
   header: {
     flexDirection: 'row',
@@ -361,15 +371,15 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     flex: 1,
-    height: 8,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 4,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 5,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: COLORS.primary,
-    borderRadius: 4,
+    borderRadius: 5,
   },
   scrollView: {
     flex: 1,
@@ -378,52 +388,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 120,
   },
-
-  // Explain styles
-  explainContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  explainTitle: {
+  questionText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 24,
     color: COLORS.text.primary,
-    marginBottom: 16,
-  },
-  explainText: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 17,
-    color: COLORS.text.secondary,
-    lineHeight: 26,
-    marginBottom: 20,
-  },
-  highlightBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: `${COLORS.xp.gold}15`,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  highlightText: {
-    flex: 1,
-    fontFamily: 'Urbanist_600SemiBold',
-    fontSize: 15,
-    color: COLORS.text.primary,
-    lineHeight: 22,
-  },
-
-  // MCQ styles
-  mcqContainer: {},
-  questionText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 22,
-    color: COLORS.text.primary,
     marginBottom: 24,
-    lineHeight: 32,
+    lineHeight: 34,
   },
   optionsContainer: {
     gap: 12,
@@ -431,73 +401,72 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 18,
-    borderWidth: 2,
-    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  optionIcon: {
+    marginRight: 12,
+  },
+  checkIcon: {
+    marginRight: 12,
   },
   optionText: {
     flex: 1,
-    fontFamily: 'Urbanist_500Medium',
+    fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
     color: COLORS.text.primary,
   },
-
-  // True/False styles
-  tfContainer: {},
-  tfButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
+  helperText: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 14,
+    color: COLORS.text.muted,
+    textAlign: 'center',
+    marginTop: 20,
   },
-  tfButton: {
-    flex: 1,
+  mascotContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  feedbackContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#E8E8E8',
-  },
-  tfButtonText: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 18,
-    color: COLORS.text.primary,
-  },
-  explanationBox: {
-    marginTop: 20,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 16,
-  },
-  explanationText: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 15,
-    color: COLORS.text.secondary,
-    lineHeight: 22,
-  },
-
-  // Feedback
-  feedbackContainer: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+    gap: 12,
   },
   feedbackCorrect: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#DCFCE7',
   },
   feedbackWrong: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#FEE2E2',
   },
   feedbackText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
   },
-
-  // Bottom
+  xpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  xpText: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 14,
+    color: '#B45309',
+  },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
@@ -505,11 +474,16 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'transparent',
   },
   continueButton: {
     borderRadius: 50,
     overflow: 'hidden',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   continueGradient: {
     flexDirection: 'row',

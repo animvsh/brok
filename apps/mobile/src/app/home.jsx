@@ -14,101 +14,66 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Flame,
-  Star,
+  Heart,
+  Target,
   Play,
-  Check,
   Lock,
   BookOpen,
   Brain,
-  Repeat,
   Zap,
+  Dna,
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
 import { supabase } from '@/utils/auth/supabase';
 import { COLORS } from '@/components/theme/colors';
+import BrokMascot from '@/components/mascot/BrokMascot';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// Node types with icons
-const NODE_TYPES = {
-  learn: { icon: BookOpen, color: COLORS.primary, label: 'Learn' },
-  practice: { icon: Brain, color: '#9C27B0', label: 'Practice' },
-  reinforce: { icon: Repeat, color: '#FF9800', label: 'Reinforce' },
-  check: { icon: Zap, color: '#4CAF50', label: 'Quick Check' },
-};
-
-// Sample path nodes (in real app, fetched from API based on mastery)
+// Sample path nodes
 const SAMPLE_PATH = [
-  { id: 1, type: 'learn', title: 'Arrays Basics', status: 'current', time: '3 min' },
-  { id: 2, type: 'practice', title: 'Array Operations', status: 'locked', time: '4 min' },
-  { id: 3, type: 'check', title: 'Quick Quiz', status: 'locked', time: '2 min' },
-  { id: 4, type: 'learn', title: 'Linked Lists', status: 'locked', time: '5 min' },
-  { id: 5, type: 'reinforce', title: 'Review Session', status: 'locked', time: '3 min' },
+  { id: 1, type: 'intro', title: 'Intro Lesson', status: 'current', icon: BookOpen, color: '#6366F1' },
+  { id: 2, type: 'locked', title: 'Locked', status: 'locked', icon: Lock, color: '#9CA3AF' },
+  { id: 3, type: 'concept', title: 'Warm-Blooded', status: 'locked', icon: Brain, color: '#EC4899' },
+  { id: 4, type: 'concept', title: 'Evolution', status: 'locked', icon: Dna, color: '#8B5CF6' },
 ];
 
-function PathNode({ node, index, onPress }) {
-  const nodeType = NODE_TYPES[node.type] || NODE_TYPES.learn;
-  const Icon = nodeType.icon;
-  const isCurrent = node.status === 'current';
-  const isComplete = node.status === 'complete';
+function LessonPill({ node, onPress }) {
+  const Icon = node.icon;
   const isLocked = node.status === 'locked';
+  const isCurrent = node.status === 'current';
 
   return (
     <TouchableOpacity
       style={[
-        styles.nodeContainer,
-        isCurrent && styles.nodeContainerCurrent,
-        isLocked && styles.nodeContainerLocked,
+        styles.lessonPill,
+        isCurrent && styles.lessonPillCurrent,
+        isLocked && styles.lessonPillLocked,
       ]}
       onPress={() => !isLocked && onPress(node)}
       disabled={isLocked}
       activeOpacity={0.8}
     >
-      {/* Connector line */}
-      {index > 0 && (
-        <View style={[
-          styles.connector,
-          isComplete && styles.connectorComplete,
-        ]} />
-      )}
-
-      {/* Node circle */}
-      <View style={[
-        styles.nodeCircle,
-        { backgroundColor: isLocked ? '#E0E0E0' : nodeType.color },
-        isCurrent && styles.nodeCircleCurrent,
-      ]}>
-        {isComplete ? (
-          <Check size={20} color="#FFFFFF" strokeWidth={3} />
-        ) : isLocked ? (
-          <Lock size={18} color="#9E9E9E" />
-        ) : (
-          <Icon size={20} color="#FFFFFF" />
-        )}
-      </View>
-
-      {/* Node content */}
-      <View style={styles.nodeContent}>
+      <LinearGradient
+        colors={isLocked ? ['#F3F4F6', '#E5E7EB'] : [node.color, `${node.color}DD`]}
+        style={styles.lessonPillGradient}
+      >
+        <View style={styles.lessonPillIcon}>
+          <Icon size={20} color={isLocked ? '#9CA3AF' : '#FFFFFF'} />
+        </View>
         <Text style={[
-          styles.nodeTitle,
-          isLocked && styles.nodeTitleLocked,
+          styles.lessonPillText,
+          isLocked && styles.lessonPillTextLocked,
         ]}>
           {node.title}
         </Text>
-        <View style={styles.nodeMetaRow}>
-          <Text style={styles.nodeType}>{nodeType.label}</Text>
-          <Text style={styles.nodeDot}>·</Text>
-          <Text style={styles.nodeTime}>{node.time}</Text>
-        </View>
-      </View>
-
-      {/* Play button for current */}
-      {isCurrent && (
-        <View style={styles.playButton}>
-          <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-        </View>
-      )}
+        {isCurrent && (
+          <View style={styles.playBadge}>
+            <Play size={12} color="#FFFFFF" fill="#FFFFFF" />
+          </View>
+        )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -128,7 +93,7 @@ export default function HomeScreen() {
         .select('*')
         .eq('user_id', user?.id)
         .single();
-      return data || { total_xp: 0, current_streak: 0 };
+      return data || { total_xp: 0, current_streak: 3, hearts: 5 };
     },
     enabled: !!user?.id,
   });
@@ -158,12 +123,11 @@ export default function HomeScreen() {
 
   if (!fontsLoaded) return null;
 
-  const xp = stats?.total_xp || 0;
-  const streak = stats?.current_streak || 0;
+  const streak = stats?.current_streak || 3;
+  const hearts = stats?.hearts || 5;
   const pathNodes = pathData?.nodes || SAMPLE_PATH;
-  const totalTime = pathNodes.reduce((acc, n) => acc + parseInt(n.time), 0);
 
-  const handleNodePress = (node) => {
+  const handleLessonPress = (node) => {
     router.push({
       pathname: '/lesson',
       params: { threadId, nodeId: node.id },
@@ -174,28 +138,33 @@ export default function HomeScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={['#F8FAFF', '#FFFFFF']}
+        colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Header with stats */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Today's Path</Text>
-          <Text style={styles.timeEstimate}>{totalTime} min total</Text>
-        </View>
+      {/* Cloud decorations */}
+      <View style={[styles.cloud, styles.cloud1]} />
+      <View style={[styles.cloud, styles.cloud2]} />
 
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Today's Mission</Text>
         <View style={styles.statsRow}>
           {/* Streak */}
-          <View style={styles.statBadge}>
-            <Flame size={16} color={COLORS.streak.fire} />
+          <View style={[styles.statBadge, styles.statBadgeStreak]}>
+            <Flame size={16} color="#FF6B35" />
             <Text style={styles.statValue}>{streak}</Text>
           </View>
-
-          {/* XP */}
-          <View style={[styles.statBadge, styles.statBadgeXP]}>
-            <Star size={16} color={COLORS.xp.gold} />
-            <Text style={styles.statValue}>{xp}</Text>
+          {/* Hearts */}
+          <View style={[styles.statBadge, styles.statBadgeHearts]}>
+            <Heart size={16} color="#EC4899" fill="#EC4899" />
+            <Text style={styles.statValue}>{hearts}</Text>
+          </View>
+          {/* Target */}
+          <View style={[styles.statBadge, styles.statBadgeTarget]}>
+            <Target size={16} color="#10B981" />
           </View>
         </View>
       </View>
@@ -210,29 +179,59 @@ export default function HomeScreen() {
           style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: insets.bottom + 100 },
+            { paddingBottom: insets.bottom + 40 },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Path nodes */}
-          {pathNodes.map((node, index) => (
-            <PathNode
-              key={node.id}
-              node={node}
-              index={index}
-              onPress={handleNodePress}
-            />
-          ))}
+          {/* Lesson Pills */}
+          <View style={styles.lessonsContainer}>
+            {pathNodes.map((node, index) => (
+              <LessonPill
+                key={node.id}
+                node={node}
+                onPress={handleLessonPress}
+              />
+            ))}
+          </View>
+
+          {/* Mascot with calendar */}
+          <View style={styles.mascotSection}>
+            <BrokMascot size={140} mood="encouraging" />
+
+            {/* Mini Calendar */}
+            <View style={styles.calendarCard}>
+              <View style={styles.calendarHeader}>
+                <Text style={styles.calendarMonth}>MON TUE WED THU FRI SAT SUN</Text>
+              </View>
+              <View style={styles.calendarDays}>
+                {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+                  <View
+                    key={day}
+                    style={[
+                      styles.calendarDay,
+                      day <= streak && styles.calendarDayActive,
+                    ]}
+                  >
+                    {day <= streak ? (
+                      <Text style={styles.calendarDayCheck}>✓</Text>
+                    ) : (
+                      <Text style={styles.calendarDayNumber}>{day}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
         </ScrollView>
       )}
 
-      {/* Start button */}
+      {/* Start Button */}
       <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity
           style={styles.startButton}
           onPress={() => {
             const currentNode = pathNodes.find(n => n.status === 'current');
-            if (currentNode) handleNodePress(currentNode);
+            if (currentNode) handleLessonPress(currentNode);
           }}
         >
           <LinearGradient
@@ -240,7 +239,7 @@ export default function HomeScreen() {
             style={styles.startGradient}
           >
             <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
-            <Text style={styles.startText}>Start Learning</Text>
+            <Text style={styles.startText}>Start Lesson</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -251,48 +250,65 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
+    backgroundColor: '#E8D5FF',
+  },
+  cloud: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 100,
+  },
+  cloud1: {
+    width: 150,
+    height: 60,
+    top: 100,
+    right: -40,
+  },
+  cloud2: {
+    width: 100,
+    height: 40,
+    top: 180,
+    left: -20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
-  greeting: {
+  title: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 28,
     color: COLORS.text.primary,
-  },
-  timeEstimate: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 14,
-    color: COLORS.text.secondary,
-    marginTop: 4,
+    marginBottom: 16,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   statBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 20,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  statBadgeXP: {
-    backgroundColor: `${COLORS.xp.gold}15`,
-    borderColor: `${COLORS.xp.gold}30`,
+  statBadgeStreak: {
+    backgroundColor: '#FFF5F0',
+  },
+  statBadgeHearts: {
+    backgroundColor: '#FFF0F5',
+  },
+  statBadgeTarget: {
+    backgroundColor: '#F0FFF5',
   },
   statValue: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 14,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 16,
     color: COLORS.text.primary,
   },
   loadingContainer: {
@@ -307,102 +323,114 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  nodeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+  lessonsContainer: {
+    gap: 12,
+  },
+  lessonPill: {
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  nodeContainerCurrent: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
+  lessonPillCurrent: {
     shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
-  nodeContainerLocked: {
-    backgroundColor: '#FAFAFA',
+  lessonPillLocked: {
     opacity: 0.7,
   },
-  connector: {
-    position: 'absolute',
-    left: 35,
-    top: -12,
-    width: 2,
-    height: 12,
-    backgroundColor: '#E0E0E0',
+  lessonPillGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
   },
-  connectorComplete: {
-    backgroundColor: COLORS.status.success,
-  },
-  nodeCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  lessonPillIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  nodeCircleCurrent: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  nodeContent: {
+  lessonPillText: {
     flex: 1,
-  },
-  nodeTitle: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
-    marginBottom: 4,
+    color: '#FFFFFF',
   },
-  nodeTitleLocked: {
-    color: COLORS.text.muted,
+  lessonPillTextLocked: {
+    color: '#6B7280',
   },
-  nodeMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nodeType: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 13,
-    color: COLORS.text.secondary,
-  },
-  nodeDot: {
-    color: COLORS.text.muted,
-    marginHorizontal: 6,
-  },
-  nodeTime: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 13,
-    color: COLORS.text.muted,
-  },
-  playButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary,
+  playBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  mascotSection: {
+    alignItems: 'center',
+    marginTop: 32,
+    gap: 20,
+  },
+  calendarCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  calendarHeader: {
+    marginBottom: 12,
+  },
+  calendarMonth: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 10,
+    color: COLORS.text.muted,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  calendarDays: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarDay: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarDayActive: {
+    backgroundColor: '#7DD87D',
+  },
+  calendarDayNumber: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 14,
+    color: COLORS.text.muted,
+  },
+  calendarDayCheck: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   bottomContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 24,
     paddingTop: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'transparent',
   },
   startButton: {
     borderRadius: 50,

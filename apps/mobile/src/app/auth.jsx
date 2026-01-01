@@ -10,21 +10,23 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
 import { COLORS } from '@/components/theme/colors';
+import BrokMascot from '@/components/mascot/BrokMascot';
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
   const { signIn, signUp } = useAuth();
 
-  const [mode, setMode] = useState('signin'); // 'signin' or 'signup'
+  const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +55,6 @@ export default function AuthScreen() {
       if (error) {
         Alert.alert('Error', error.message || 'Authentication failed');
       } else {
-        // Success - let index handle proper routing based on thread status
         router.replace('/');
       }
     } catch (err) {
@@ -69,42 +70,56 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={['#1A1A2E', '#16213E', '#0F0F1A']}
+        colors={['#FFE5EC', '#E8D5FF', '#D5E5FF', '#E0F4FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* Cloud decorations */}
+      <View style={[styles.cloud, styles.cloud1]} />
+      <View style={[styles.cloud, styles.cloud2]} />
+      <View style={[styles.cloud, styles.cloud3]} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 20 }]}>
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoBox}>
-              <Sparkles size={32} color="#1A1A2E" />
-            </View>
-            <Text style={styles.brandName}>BROK</Text>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Mascot */}
+          <View style={styles.mascotContainer}>
+            <BrokMascot size={120} mood="happy" />
           </View>
 
           {/* Title */}
           <Text style={styles.title}>
-            {mode === 'signin' ? 'Welcome back' : 'Create account'}
+            {mode === 'signin' ? 'Welcome back!' : 'Join Brok!'}
           </Text>
           <Text style={styles.subtitle}>
-            {mode === 'signin' ? 'Sign in to continue learning' : 'Start your learning journey'}
+            {mode === 'signin' ? 'Sign in to continue learning' : 'Create an account to start'}
           </Text>
 
           {/* Form */}
           <View style={styles.form}>
             {/* Email input */}
             <View style={styles.inputContainer}>
-              <Mail size={20} color="rgba(255,255,255,0.5)" />
+              <View style={styles.inputIcon}>
+                <Mail size={20} color={COLORS.primary} />
+              </View>
               <TextInput
                 style={styles.input}
                 placeholder="Email"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor={COLORS.text.muted}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -116,22 +131,27 @@ export default function AuthScreen() {
 
             {/* Password input */}
             <View style={styles.inputContainer}>
-              <Lock size={20} color="rgba(255,255,255,0.5)" />
+              <View style={styles.inputIcon}>
+                <Lock size={20} color={COLORS.primary} />
+              </View>
               <TextInput
                 style={styles.input}
                 placeholder="Password"
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor={COLORS.text.muted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!loading}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
                 {showPassword ? (
-                  <EyeOff size={20} color="rgba(255,255,255,0.5)" />
+                  <EyeOff size={20} color={COLORS.text.muted} />
                 ) : (
-                  <Eye size={20} color="rgba(255,255,255,0.5)" />
+                  <Eye size={20} color={COLORS.text.muted} />
                 )}
               </TouchableOpacity>
             </View>
@@ -168,8 +188,7 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -178,42 +197,51 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#FFE5EC',
   },
-  content: {
-    flex: 1,
+  cloud: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 100,
+  },
+  cloud1: {
+    width: 140,
+    height: 60,
+    top: 60,
+    right: -40,
+  },
+  cloud2: {
+    width: 100,
+    height: 45,
+    top: 140,
+    left: -30,
+  },
+  cloud3: {
+    width: 80,
+    height: 35,
+    bottom: 150,
+    right: 20,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
   },
-  logoContainer: {
+  mascotContainer: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoBox: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  brandName: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 24,
-    color: '#FFFFFF',
-    letterSpacing: 3,
+    marginBottom: 24,
   },
   title: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 28,
-    color: '#FFFFFF',
+    fontSize: 32,
+    color: COLORS.text.primary,
+    textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontFamily: 'Urbanist_400Regular',
     fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
-    marginBottom: 40,
+    color: COLORS.text.secondary,
+    textAlign: 'center',
+    marginBottom: 32,
   },
   form: {
     gap: 16,
@@ -221,25 +249,37 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
     fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
-    color: '#FFFFFF',
-    paddingVertical: 16,
+    color: COLORS.text.primary,
+    paddingVertical: 18,
+  },
+  eyeButton: {
+    padding: 8,
   },
   submitButton: {
     borderRadius: 50,
     overflow: 'hidden',
     marginTop: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   submitGradient: {
     paddingVertical: 18,
@@ -259,7 +299,7 @@ const styles = StyleSheet.create({
   toggleText: {
     fontFamily: 'Urbanist_400Regular',
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    color: COLORS.text.secondary,
   },
   toggleLink: {
     fontFamily: 'Urbanist_600SemiBold',

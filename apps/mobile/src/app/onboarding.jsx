@@ -16,64 +16,75 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Sparkles, ArrowRight, Link2, FileText } from 'lucide-react-native';
+import {
+  Music,
+  Code,
+  Brain,
+  Dumbbell,
+  Sparkles,
+  ChevronRight,
+} from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
-import { COLORS } from '@/components/theme/colors';
+import { COLORS, GRADIENTS } from '@/components/theme/colors';
+import BrokMascot from '@/components/mascot/BrokMascot';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// Suggestion chips
-const SUGGESTIONS = [
-  'Learn Python basics',
-  'Data structures & algorithms',
-  'Spanish for beginners',
-  'Public speaking skills',
-  'Personal finance 101',
-  'Guitar fundamentals',
+// Topic options with icons
+const TOPICS = [
+  { id: 'guitar', label: 'Guitar', icon: Music, color: '#FF8A65' },
+  { id: 'data-structures', label: 'Data Structures', icon: Code, color: '#64B5F6' },
+  { id: 'psychology', label: 'Psychology', icon: Brain, color: '#BA68C8' },
+  { id: 'fitness', label: 'Fitness', icon: Dumbbell, color: '#4DB6AC' },
+  { id: 'other', label: 'Something Else', icon: Sparkles, color: '#FFB74D' },
 ];
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { session, user } = useAuth();
+  const { session } = useAuth();
 
-  const [input, setInput] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [customTopic, setCustomTopic] = useState('');
   const [loading, setLoading] = useState(false);
-  const [inputType, setInputType] = useState('text'); // text, link, or file
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   if (!fontsLoaded) return null;
 
-  const handleSuggestionPress = (suggestion) => {
-    setInput(suggestion);
-    // Animate
+  const handleTopicSelect = (topic) => {
+    setSelectedTopic(topic.id);
+    if (topic.id === 'other') {
+      setShowCustomInput(true);
+    } else {
+      setShowCustomInput(false);
+      setCustomTopic('');
+    }
+    // Bounce animation
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.02, duration: 100, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1.05, duration: 100, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start();
   };
 
-  const handleSubmit = async () => {
-    const trimmedInput = input.trim();
+  const handleContinue = async () => {
+    const topicToSend = selectedTopic === 'other' ? customTopic.trim() : selectedTopic;
 
-    if (!trimmedInput) {
-      Alert.alert('What do you want to learn?', 'Type a topic, paste a link, or describe what you want to master.');
+    if (!topicToSend) {
+      Alert.alert('Pick a topic', 'What would you like to learn?');
       return;
     }
 
-    if (trimmedInput.length < 3) {
-      Alert.alert('Too short', 'Please provide more detail about what you want to learn.');
+    if (selectedTopic === 'other' && customTopic.trim().length < 3) {
+      Alert.alert('Too short', 'Tell me a bit more about what you want to learn!');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Determine if input is a URL
-      const isUrl = trimmedInput.match(/^https?:\/\//i);
-
       const response = await fetch(`${API_URL}/api/threads/create`, {
         method: 'POST',
         headers: {
@@ -81,8 +92,8 @@ export default function OnboardingScreen() {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          input: trimmedInput,
-          inputType: isUrl ? 'link' : 'text',
+          input: topicToSend,
+          inputType: 'text',
         }),
       });
 
@@ -112,9 +123,16 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={['#F8FAFF', '#FFFFFF']}
+        colors={['#FFE5EC', '#E8D5FF', '#D5E5FF', '#E0F4FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* Cloud decorations */}
+      <View style={[styles.cloud, styles.cloud1]} />
+      <View style={[styles.cloud, styles.cloud2]} />
+      <View style={[styles.cloud, styles.cloud3]} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -124,94 +142,98 @@ export default function OnboardingScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 100 },
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 120 },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Sparkles size={32} color={COLORS.primary} />
-            </View>
-            <Text style={styles.title}>What do you want to learn?</Text>
-            <Text style={styles.subtitle}>
-              Type anything — a topic, paste a link, or describe what you want to master
-            </Text>
-          </View>
+          {/* Title */}
+          <Text style={styles.title}>What do you{'\n'}want to learn?</Text>
 
-          {/* Input */}
-          <Animated.View style={[styles.inputCard, { transform: [{ scale: scaleAnim }] }]}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="e.g., Machine learning fundamentals, or paste a PDF link..."
-              placeholderTextColor={COLORS.text.muted}
-              value={input}
-              onChangeText={setInput}
-              multiline
-              textAlignVertical="top"
-              editable={!loading}
-              autoFocus
-            />
+          {/* Topic Pills */}
+          <Animated.View style={[styles.pillsContainer, { transform: [{ scale: scaleAnim }] }]}>
+            {TOPICS.map((topic) => {
+              const Icon = topic.icon;
+              const isSelected = selectedTopic === topic.id;
 
-            {/* Input type indicators */}
-            <View style={styles.inputTypeRow}>
-              <View style={styles.inputTypeIndicator}>
-                <FileText size={14} color={COLORS.text.muted} />
-                <Text style={styles.inputTypeText}>Text</Text>
-              </View>
-              <View style={styles.inputTypeDivider} />
-              <View style={styles.inputTypeIndicator}>
-                <Link2 size={14} color={COLORS.text.muted} />
-                <Text style={styles.inputTypeText}>Link</Text>
-              </View>
-            </View>
+              return (
+                <TouchableOpacity
+                  key={topic.id}
+                  style={[
+                    styles.pill,
+                    isSelected && styles.pillSelected,
+                  ]}
+                  onPress={() => handleTopicSelect(topic)}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.pillIcon, { backgroundColor: `${topic.color}20` }]}>
+                    <Icon size={20} color={topic.color} />
+                  </View>
+                  <Text style={[
+                    styles.pillText,
+                    isSelected && styles.pillTextSelected,
+                  ]}>
+                    {topic.label}
+                  </Text>
+                  {isSelected && (
+                    <View style={styles.checkmark}>
+                      <Text style={styles.checkmarkText}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </Animated.View>
 
-          {/* Suggestions */}
-          <View style={styles.suggestionsContainer}>
-            <Text style={styles.suggestionsLabel}>Or try one of these:</Text>
-            <View style={styles.suggestionsGrid}>
-              {SUGGESTIONS.map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.suggestionChip}
-                  onPress={() => handleSuggestionPress(suggestion)}
-                  disabled={loading}
-                >
-                  <Text style={styles.suggestionText}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
+          {/* Custom input for "Something Else" */}
+          {showCustomInput && (
+            <View style={styles.customInputContainer}>
+              <TextInput
+                style={styles.customInput}
+                placeholder="Type what you want to learn..."
+                placeholderTextColor={COLORS.text.muted}
+                value={customTopic}
+                onChangeText={setCustomTopic}
+                multiline
+                editable={!loading}
+                autoFocus
+              />
             </View>
+          )}
+
+          {/* Mascot */}
+          <View style={styles.mascotContainer}>
+            <BrokMascot size={160} mood={selectedTopic ? 'excited' : 'happy'} />
           </View>
         </ScrollView>
 
-        {/* Submit button */}
+        {/* Continue Button */}
         <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity
             style={[
-              styles.submitButton,
-              (!input.trim() || loading) && styles.submitButtonDisabled,
+              styles.continueButton,
+              (!selectedTopic || loading) && styles.continueButtonDisabled,
             ]}
-            onPress={handleSubmit}
-            disabled={!input.trim() || loading}
+            onPress={handleContinue}
+            disabled={!selectedTopic || loading}
           >
             <LinearGradient
-              colors={input.trim() && !loading
+              colors={selectedTopic && !loading
                 ? [COLORS.primary, COLORS.primaryDark]
                 : ['#CCCCCC', '#AAAAAA']
               }
-              style={styles.submitGradient}
+              style={styles.continueGradient}
             >
               {loading ? (
                 <>
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.submitText}>Building your path...</Text>
+                  <Text style={styles.continueText}>Building your path...</Text>
                 </>
               ) : (
                 <>
-                  <Text style={styles.submitText}>Start Learning</Text>
-                  <ArrowRight size={20} color="#FFFFFF" />
+                  <Text style={styles.continueText}>Continue</Text>
+                  <ChevronRight size={20} color="#FFFFFF" />
                 </>
               )}
             </LinearGradient>
@@ -222,18 +244,10 @@ export default function OnboardingScreen() {
       {/* Loading overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContent}>
-            <Sparkles size={48} color={COLORS.primary} />
-            <Text style={styles.loadingTitle}>Building your learning path</Text>
-            <Text style={styles.loadingSubtitle}>
-              Analyzing your request and creating a personalized curriculum...
-            </Text>
-            <ActivityIndicator
-              size="large"
-              color={COLORS.primary}
-              style={{ marginTop: 24 }}
-            />
-          </View>
+          <BrokMascot size={120} mood="thinking" />
+          <Text style={styles.loadingTitle}>Building your path...</Text>
+          <Text style={styles.loadingSubtitle}>This will just take a moment</Text>
+          <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
         </View>
       )}
     </View>
@@ -243,109 +257,112 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
+    backgroundColor: '#FFE5EC',
+  },
+  cloud: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    borderRadius: 100,
+  },
+  cloud1: {
+    width: 120,
+    height: 60,
+    top: 80,
+    left: -30,
+  },
+  cloud2: {
+    width: 100,
+    height: 50,
+    top: 150,
+    right: -20,
+  },
+  cloud3: {
+    width: 80,
+    height: 40,
+    bottom: 200,
+    left: 20,
   },
   scrollContent: {
     paddingHorizontal: 24,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    backgroundColor: `${COLORS.primary}15`,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
   title: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 26,
+    fontSize: 32,
     color: COLORS.text.primary,
-    textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 32,
+    lineHeight: 42,
   },
-  subtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 16,
-    color: COLORS.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 20,
+  pillsContainer: {
+    gap: 12,
   },
-  inputCard: {
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#F0F0F0',
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    marginBottom: 24,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  textInput: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 17,
-    color: COLORS.text.primary,
-    minHeight: 100,
-    lineHeight: 26,
-  },
-  inputTypeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  inputTypeIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  inputTypeText: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 13,
-    color: COLORS.text.muted,
-  },
-  inputTypeDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 16,
-  },
-  suggestionsContainer: {
-    marginBottom: 24,
-  },
-  suggestionsLabel: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
-    color: COLORS.text.secondary,
-    marginBottom: 12,
-  },
-  suggestionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  suggestionChip: {
+  pillSelected: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
-  suggestionText: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
+  pillIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  pillText: {
+    flex: 1,
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 16,
     color: COLORS.text.primary,
+  },
+  pillTextSelected: {
+    color: COLORS.primary,
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmarkText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  customInputContainer: {
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  customInput: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 16,
+    color: COLORS.text.primary,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  mascotContainer: {
+    alignItems: 'center',
+    marginTop: 32,
   },
   bottomContainer: {
     position: 'absolute',
@@ -354,9 +371,9 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'transparent',
   },
-  submitButton: {
+  continueButton: {
     borderRadius: 50,
     overflow: 'hidden',
     shadowColor: COLORS.primary,
@@ -365,17 +382,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  submitButtonDisabled: {
+  continueButtonDisabled: {
     shadowOpacity: 0,
   },
-  submitGradient: {
+  continueGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 18,
-    gap: 10,
+    gap: 8,
   },
-  submitText: {
+  continueText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 17,
     color: '#FFFFFF',
@@ -387,22 +404,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
-  loadingContent: {
-    alignItems: 'center',
-  },
   loadingTitle: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 22,
     color: COLORS.text.primary,
     marginTop: 24,
-    marginBottom: 12,
     textAlign: 'center',
   },
   loadingSubtitle: {
     fontFamily: 'Urbanist_400Regular',
     fontSize: 15,
     color: COLORS.text.secondary,
+    marginTop: 8,
     textAlign: 'center',
-    lineHeight: 22,
   },
 });

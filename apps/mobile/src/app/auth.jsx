@@ -169,14 +169,6 @@ export default function AuthScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Skip for demo */}
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={() => router.replace('/onboarding')}
-            disabled={loading}
-          >
-            <Text style={styles.skipText}>Continue as guest</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -273,14 +265,5 @@ const styles = StyleSheet.create({
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 14,
     color: COLORS.primary,
-  },
-  skipButton: {
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  skipText: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.4)',
   },
 });

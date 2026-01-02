@@ -14,6 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, ChevronRight } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { COLORS } from '@/components/theme/colors';
+import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
 // Sample skill check questions
@@ -47,7 +49,7 @@ const SAMPLE_QUESTIONS = [
 export default function SkillCheckScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { session } = useAuth();
+  const { user } = useAuth();
   const { topic, intent, intensity } = useLocalSearchParams();
 
   const [currentQ, setCurrentQ] = useState(0);
@@ -85,17 +87,69 @@ export default function SkillCheckScreen() {
         Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       });
     } else {
-      // Create course
+      // Create course using Edge Function
       setLoading(true);
 
-      // For now, skip API and go directly to course with sample data
-      // This ensures the flow works even without backend
-      setTimeout(() => {
+      try {
+        // Prepare the request body
+        const requestBody = {
+          topic: topic || 'General Learning',
+        };
+        
+        // Only include user_id if user is authenticated
+        if (user?.id) {
+          requestBody.user_id = user.id;
+        }
+
+        console.log('Calling generate-course function with:', { topic: requestBody.topic, hasUser: !!user?.id });
+
+        // Call the generate-course Edge Function
+        const { data, error } = await supabase.functions.invoke('generate-course', {
+          body: requestBody,
+        });
+
+        if (error) {
+          console.error('Error generating course:', error);
+          console.error('Error details:', JSON.stringify(error, null, 2));
+          // Fallback: navigate with topic info
+          setLoading(false);
+          router.replace({
+            pathname: '/course',
+            params: { courseId: 'new', topic, intent, intensity },
+          });
+          return;
+        }
+
+        console.log('Course generation response:', data);
+
+        if (data?.success && data?.course?.id) {
+          // Navigate to the newly created course
+          router.replace({
+            pathname: '/course',
+            params: { 
+              courseId: data.course.id,
+              topic: data.course.title,
+            },
+          });
+        } else {
+          console.warn('Unexpected response format:', data);
+          // Fallback if course creation didn't return expected data
+          setLoading(false);
+          router.replace({
+            pathname: '/course',
+            params: { courseId: 'new', topic, intent, intensity },
+          });
+        }
+      } catch (error) {
+        console.error('Error calling generate-course function:', error);
+        console.error('Error stack:', error.stack);
+        // Fallback: navigate with topic info
+        setLoading(false);
         router.replace({
           pathname: '/course',
           params: { courseId: 'new', topic, intent, intensity },
         });
-      }, 1500);
+      }
     }
   };
 

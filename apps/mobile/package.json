@@ -3,7 +3,20 @@
   "main": "index",
   "version": "1.0.0",
   "scripts": {
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "start": "expo start --tunnel --port 9000",
+    "start:ios": "expo start --ios --tunnel --port 9000",
+    "start:android": "expo start --android --tunnel --port 9000",
+    "start:web": "expo start --web --port 9000",
+    "start:clear": "expo start --clear --tunnel --port 9000",
+    "start:lan": "expo start --port 9000",
+    "start:tunnel": "expo start --tunnel --port 9000",
+    "android": "expo start --android --tunnel --port 9000",
+    "ios": "expo start --ios --tunnel --port 9000",
+    "web": "expo start --web --port 9000",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "echo 'No linter configured'"
   },
   "dependencies": {
     "@expo-google-fonts/dev": "^0.4.7",

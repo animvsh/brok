@@ -68,13 +68,7 @@ export default function IntensityScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E8D5FF', '#FFE5EC', '#FFFBEB']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Progress indicator */}
       <View style={styles.progressContainer}>
@@ -86,7 +80,7 @@ export default function IntensityScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.text.primary} />
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -158,7 +152,7 @@ export default function IntensityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D5FF',
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -192,7 +186,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 32,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
@@ -207,14 +201,11 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 18,
     padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   optionCardSelected: {
     borderWidth: 2,
@@ -240,7 +231,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 17,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   optionLabelSelected: {
     color: COLORS.primary,
@@ -274,7 +265,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: '#666666',
   },
   mascotContainer: {
     alignItems: 'center',

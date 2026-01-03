@@ -37,31 +37,33 @@ export const COLORS = {
   brokGreenDark: '#5BC25B',
   brokGreenLight: '#A8EDA8',
 
-  // Accent colors
+  // Accent colors (vibrant for course cards)
   accent: {
-    orange: '#FFB088',
-    pink: '#FF9ECD',
-    blue: '#9AD8FF',
-    purple: '#C9A8FF',
-    yellow: '#FFE066',
+    orange: '#FF8A65',
+    pink: '#F06292',
+    blue: '#42A5F5',
+    purple: '#AB47BC',
+    yellow: '#FFD54F',
     coral: '#FF8A80',
+    teal: '#26A69A',
+    indigo: '#5C6BC0',
   },
 
-  // Background colors
+  // Dark theme background colors
   background: {
-    warm: '#FFF5F0',
-    cool: '#F0F8FF',
-    neutral: '#FAFAFA',
-    card: '#FFFFFF',
+    dark: '#000000',
+    card: '#1A1A1A',
+    cardLight: '#2A2A2A',
+    overlay: 'rgba(0, 0, 0, 0.5)',
   },
 
-  // Text colors
+  // Text colors (dark theme)
   text: {
-    primary: '#1A1A2E',
-    secondary: '#4A4A6A',
-    tertiary: '#8A8AAA',
+    primary: '#FFFFFF',
+    secondary: '#B0B0B0',
+    tertiary: '#808080',
     light: '#FFFFFF',
-    muted: '#B0B0C0',
+    muted: '#666666',
   },
 
   // Status colors
@@ -86,20 +88,30 @@ export const COLORS = {
     hot: '#FFD93D',
   },
 
-  // Option pill colors
+  // Option pill colors (dark theme)
   pill: {
     selected: '#6366F1',
-    unselected: '#FFFFFF',
+    unselected: '#2A2A2A',
     correct: '#4CAF50',
     incorrect: '#FF5252',
-    locked: '#E0E0E0',
+    locked: '#333333',
   },
 
-  // Borders and shadows
+  // Borders and shadows (dark theme)
   border: {
-    light: 'rgba(0, 0, 0, 0.05)',
-    medium: 'rgba(0, 0, 0, 0.1)',
-    dark: 'rgba(0, 0, 0, 0.2)',
+    light: 'rgba(255, 255, 255, 0.1)',
+    medium: 'rgba(255, 255, 255, 0.15)',
+    dark: 'rgba(255, 255, 255, 0.2)',
+  },
+
+  // Course card colors (vibrant gradients)
+  courseCard: {
+    blue: '#3B82F6',
+    orange: '#F97316',
+    pink: '#EC4899',
+    purple: '#A855F7',
+    teal: '#14B8A6',
+    indigo: '#6366F1',
   },
 
   // Bubble/decoration colors

@@ -85,18 +85,12 @@ export default function DiscoverScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#FFE5EC', '#E8D5FF', '#D5E5FF', '#E0F4FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.text.primary} />
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Learn Something New</Text>
         <View style={{ width: 44 }} />
@@ -195,7 +189,7 @@ export default function DiscoverScreen() {
                   onPress={() => handleTopicSelect(topic)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.listIcon, { backgroundColor: '#F3F4F6' }]}>
+                  <View style={[styles.listIcon, { backgroundColor: '#2A2A2A' }]}>
                     <Clock size={16} color={COLORS.text.muted} />
                   </View>
                   <Text style={styles.listLabel}>{topic.label}</Text>
@@ -212,7 +206,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFE5EC',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -230,7 +224,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -241,15 +235,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     paddingHorizontal: 16,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   searchIcon: {
     marginRight: 12,
@@ -258,7 +249,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     paddingVertical: 16,
   },
   mascotContainer: {
@@ -283,7 +274,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   topicsGrid: {
     flexDirection: 'row',
@@ -293,15 +284,12 @@ const styles = StyleSheet.create({
   },
   topicCard: {
     width: '47%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   topicIcon: {
     width: 48,
@@ -314,21 +302,18 @@ const styles = StyleSheet.create({
   topicLabel: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 14,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   listIcon: {
     width: 36,
@@ -342,6 +327,6 @@ const styles = StyleSheet.create({
   listLabel: {
     fontFamily: 'Urbanist_500Medium',
     fontSize: 15,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
 });

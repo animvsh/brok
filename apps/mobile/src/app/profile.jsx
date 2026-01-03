@@ -109,18 +109,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.text.primary} />
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <View style={{ width: 44 }} />
@@ -250,7 +244,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D5FF',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -268,7 +262,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -277,16 +271,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   avatarContainer: {
     marginBottom: 12,
@@ -294,7 +285,7 @@ const styles = StyleSheet.create({
   userName: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 22,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   userEmail: {
     fontFamily: 'Urbanist_400Regular',
@@ -316,15 +307,12 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   statIcon: {
     width: 40,
@@ -337,7 +325,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 22,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   statLabel: {
     fontFamily: 'Urbanist_400Regular',
@@ -351,18 +339,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 12,
   },
   journeyCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   journeyRow: {
     flexDirection: 'row',
@@ -378,11 +363,11 @@ const styles = StyleSheet.create({
   journeyValue: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 14,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   journeyDivider: {
     height: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#333333',
   },
   achievementsRow: {
     flexDirection: 'row',
@@ -392,35 +377,35 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#2A2A1A',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3A3A2A',
   },
   achievementLocked: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#1A1A1A',
+    borderColor: '#333333',
   },
   settingsCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: '#333333',
   },
   settingsIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#2A2A2A',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -432,7 +417,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_500Medium',
     fontSize: 15,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   settingsLabelDanger: {
     color: '#EF4444',

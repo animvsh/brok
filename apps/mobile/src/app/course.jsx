@@ -105,7 +105,7 @@ function ModuleNode({ module, index, totalModules, status, onPress, isLast }) {
           <Text
             style={[
               styles.moduleNumber,
-              { color: isLocked ? '#9CA3AF' : isCompleted ? '#22C55E' : COLORS.text.primary },
+              { color: isLocked ? '#666666' : isCompleted ? '#22C55E' : '#FFFFFF' },
             ]}
           >
             {index + 1}
@@ -113,7 +113,7 @@ function ModuleNode({ module, index, totalModules, status, onPress, isLast }) {
           <Text
             style={[
               styles.moduleTitle,
-              { color: isLocked ? '#9CA3AF' : COLORS.text.primary },
+              { color: isLocked ? '#666666' : '#FFFFFF' },
             ]}
             numberOfLines={2}
           >
@@ -302,18 +302,12 @@ export default function CourseScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.text.primary} />
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {courseTitle}
@@ -419,7 +413,7 @@ export default function CourseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D5FF',
+    backgroundColor: '#000000',
   },
   centerContent: {
     justifyContent: 'center',
@@ -434,7 +428,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 16,
   },
   backButtonText: {
@@ -459,7 +453,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   scrollView: {
@@ -469,15 +463,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   progressCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   progressHeader: {
     flexDirection: 'row',
@@ -493,11 +484,11 @@ const styles = StyleSheet.create({
   progressPercent: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 36,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   progressBarContainer: {
     height: 10,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#2A2A2A',
     borderRadius: 5,
     overflow: 'hidden',
     marginBottom: 12,
@@ -533,20 +524,17 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   statValue: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 20,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginTop: 8,
   },
   statLabel: {
@@ -561,7 +549,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 20,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   sectionSubtitle: {
@@ -587,14 +575,11 @@ const styles = StyleSheet.create({
   moduleNode: {
     position: 'absolute',
     width: (width - 80) / 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   moduleGradient: {
     width: 48,
@@ -634,7 +619,9 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#000000',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
   },
   continueButton: {
     borderRadius: 50,

@@ -572,22 +572,13 @@ export default function LessonScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E0F4FF', '#D5E5FF', '#E8D5FF', '#FFE5EC']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
-      {/* Cloud decorations */}
-      <View style={[styles.cloud, styles.cloud1]} />
-      <View style={[styles.cloud, styles.cloud2]} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-          <X size={24} color={COLORS.text.secondary} />
+          <X size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
         <View style={styles.progressBar}>
@@ -612,23 +603,34 @@ export default function LessonScreen() {
                 const isSelected = selected === index;
                 const isCorrectOption = index === step.content.correct;
 
-                let backgroundColor = '#FFFFFF';
-                let borderColor = 'transparent';
-                let textColor = COLORS.text.primary;
+                let backgroundColor = '#1A1A1A';
+                let borderColor = '#333333';
+                let textColor = '#FFFFFF';
 
                 if (showResult) {
                   if (isCorrectOption) {
-                    backgroundColor = '#DCFCE7';
+                    backgroundColor = '#1A3A2A';
                     borderColor = '#22C55E';
-                    textColor = '#166534';
+                    textColor = '#86EFAC';
                   } else if (isSelected && !isCorrect) {
-                    backgroundColor = '#FEE2E2';
+                    backgroundColor = '#3A1A1A';
                     borderColor = '#EF4444';
-                    textColor = '#991B1B';
+                    textColor = '#FCA5A5';
+                  } else {
+                    // Unselected options when showing result
+                    backgroundColor = '#1A1A1A';
+                    borderColor = '#333333';
+                    textColor = '#B0B0B0';
                   }
                 } else if (isSelected) {
-                  backgroundColor = '#EEF2FF';
+                  backgroundColor = '#2A2A3A';
                   borderColor = COLORS.primary;
+                  textColor = '#FFFFFF';
+                } else {
+                  // Default unselected state
+                  backgroundColor = '#1A1A1A';
+                  borderColor = '#333333';
+                  textColor = '#FFFFFF';
                 }
 
                 return (
@@ -820,7 +822,7 @@ export default function LessonScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E0F4FF',
+    backgroundColor: '#000000',
   },
   centerContent: {
     justifyContent: 'center',
@@ -835,7 +837,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 16,
   },
   backButton: {
@@ -879,7 +881,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 10,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: '#2A2A2A',
     borderRadius: 5,
     overflow: 'hidden',
   },
@@ -898,7 +900,7 @@ const styles = StyleSheet.create({
   questionText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 24,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 24,
     lineHeight: 34,
   },
@@ -923,26 +925,21 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   textInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 18,
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderColor: '#333333',
   },
   textInputCorrect: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#1A3A2A',
     borderColor: '#22C55E',
   },
   textInputWrong: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#3A1A1A',
     borderColor: '#EF4444',
   },
   checkIconAbsolute: {
@@ -972,7 +969,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   correctAnswerContainer: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#1A2A3A',
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
@@ -987,19 +984,16 @@ const styles = StyleSheet.create({
   correctAnswerText: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 15,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   checkIcon: {
     marginRight: 12,
@@ -1008,10 +1002,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   explanationContainer: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#1A2A3A',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -1046,10 +1040,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   feedbackCorrect: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#1A3A2A',
   },
   feedbackWrong: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#3A1A1A',
   },
   feedbackText: {
     fontFamily: 'Montserrat_600SemiBold',

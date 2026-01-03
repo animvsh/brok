@@ -168,13 +168,7 @@ export default function CompleteScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#FFB347', '#FFCC33', '#FF9ECD', '#C9A8FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Confetti */}
       {confettiPieces.map((piece) => (
@@ -314,7 +308,7 @@ export default function CompleteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFB347',
+    backgroundColor: '#000000',
   },
   confetti: {
     position: 'absolute',
@@ -375,7 +369,7 @@ const styles = StyleSheet.create({
   badgeValue: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 18,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   mascotContainer: {
     marginTop: 16,

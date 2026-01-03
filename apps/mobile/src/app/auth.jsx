@@ -70,18 +70,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#FFE5EC', '#E8D5FF', '#D5E5FF', '#E0F4FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Cloud decorations */}
-      <View style={[styles.cloud, styles.cloud1]} />
-      <View style={[styles.cloud, styles.cloud2]} />
-      <View style={[styles.cloud, styles.cloud3]} />
+      <StatusBar barStyle="light-content" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -197,12 +186,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFE5EC',
-  },
-  cloud: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 100,
+    backgroundColor: '#000000',
   },
   cloud1: {
     width: 140,
@@ -232,7 +216,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 32,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -249,14 +233,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   inputIcon: {
     marginRight: 12,
@@ -265,7 +246,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     paddingVertical: 18,
   },
   eyeButton: {

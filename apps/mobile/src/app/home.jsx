@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StatusBar,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -20,6 +21,8 @@ import {
   BookOpen,
   ChevronRight,
   User,
+  Zap,
+  ArrowUpRight,
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
@@ -27,6 +30,53 @@ import { supabase } from '@/utils/auth/supabase';
 import { api } from '@/lib/api';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
+
+// Category options
+const CATEGORIES = ['All', 'Design', 'Illustration', 'Marketing', 'Music', 'Development'];
+
+// Course card colors (vibrant)
+const COURSE_CARD_COLORS = [
+  { bg: '#3B82F6', icon: '#2563EB' }, // Blue
+  { bg: '#F97316', icon: '#EA580C' }, // Orange
+  { bg: '#EC4899', icon: '#DB2777' }, // Pink
+  { bg: '#A855F7', icon: '#9333EA' }, // Purple
+  { bg: '#14B8A6', icon: '#0D9488' }, // Teal
+  { bg: '#6366F1', icon: '#4F46E5' }, // Indigo
+];
+
+function ColorfulCourseCard({ course, progress = 0, onPress, index = 0 }) {
+  const colorIndex = index % COURSE_CARD_COLORS.length;
+  const colors = COURSE_CARD_COLORS[colorIndex];
+  const moduleCount = course.total_modules || 0;
+
+  return (
+    <TouchableOpacity
+      style={[styles.colorfulCourseCard, { backgroundColor: colors.bg }]}
+      onPress={onPress}
+      activeOpacity={0.9}
+    >
+      <View style={styles.colorfulCardContent}>
+        <View style={styles.colorfulCardHeader}>
+          <View style={[styles.colorfulCardIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <BookOpen size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.colorfulCardBadge}>
+            <Zap size={12} color="#FFFFFF" fill="#FFFFFF" />
+            <Text style={styles.colorfulCardBadgeText}>{moduleCount}</Text>
+          </View>
+        </View>
+        <View style={styles.colorfulCardFooter}>
+          <Text style={styles.colorfulCardTitle} numberOfLines={2}>
+            {course.title}
+          </Text>
+          <View style={styles.colorfulCardArrow}>
+            <ArrowUpRight size={18} color="#FFFFFF" />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 function CourseCard({ course, progress = 0, onPress }) {
   // Generate a consistent color based on course ID
@@ -59,6 +109,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
   const { user, isAuthenticated } = useAuth();
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   // Fetch user stats from API
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -139,6 +190,11 @@ export default function HomeScreen() {
   const courses = coursesData || [];
   const hasCourses = courses.length > 0;
 
+  // Get user's display name (fallback to email or "User")
+  const displayName = user?.user_metadata?.full_name || 
+                      user?.email?.split('@')[0] || 
+                      'User';
+
   const handleContinueLearning = () => {
     if (courses[0]) {
       router.push({
@@ -165,37 +221,20 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
+      <StatusBar barStyle="light-content" />
+      
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome back!</Text>
-          <Text style={styles.subtitle}>Ready to learn?</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greeting}>Hello, {displayName}</Text>
+          <View style={styles.membershipBadge}>
+            <View style={styles.membershipDot} />
+            <Text style={styles.membershipText}>Basic member</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.profileButton} onPress={handleProfile}>
-          <User size={22} color={COLORS.text.primary} />
+          <User size={22} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
-
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <View style={[styles.statBadge, styles.statBadgeStreak]}>
-          <Flame size={18} color="#FF6B35" />
-          <Text style={styles.statValue}>{streak}</Text>
-          <Text style={styles.statLabel}>day streak</Text>
-        </View>
-        <View style={[styles.statBadge, styles.statBadgeXP]}>
-          <Star size={18} color="#FFD700" fill="#FFD700" />
-          <Text style={styles.statValue}>{xp}</Text>
-          <Text style={styles.statLabel}>total XP</Text>
-        </View>
       </View>
 
       <ScrollView
@@ -203,59 +242,71 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Primary Actions */}
-        <View style={styles.actionsContainer}>
-          {/* Continue Learning */}
-          {hasCourses && (
-            <TouchableOpacity style={styles.continueCard} onPress={handleContinueLearning}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                style={styles.continueGradient}
+        {/* Your Courses Section */}
+        <View style={styles.yourCoursesSection}>
+          <Text style={styles.yourCoursesTitle}>Your Courses</Text>
+          
+          {/* Category Filters */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesContainer}
+          >
+            {CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.categoryPill,
+                  selectedCategory === category && styles.categoryPillSelected,
+                ]}
+                onPress={() => setSelectedCategory(category)}
+                activeOpacity={0.7}
               >
-                <View style={styles.continueContent}>
-                  <View style={styles.continueIcon}>
-                    <Play size={28} color="#FFFFFF" fill="#FFFFFF" />
-                  </View>
-                  <View style={styles.continueText}>
-                    <Text style={styles.continueTitle}>Continue Learning</Text>
-                    <Text style={styles.continueSubtitle}>{courses[0]?.title}</Text>
-                  </View>
-                </View>
-                <ChevronRight size={24} color="rgba(255,255,255,0.8)" />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+                <Text
+                  style={[
+                    styles.categoryPillText,
+                    selectedCategory === category && styles.categoryPillTextSelected,
+                  ]}
+                >
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-          {/* Learn Something New */}
-          <TouchableOpacity style={styles.newCard} onPress={handleLearnNew}>
-            <View style={styles.newIcon}>
-              <Plus size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.newText}>
-              <Text style={styles.newTitle}>Learn Something New</Text>
-              <Text style={styles.newSubtitle}>Explore any topic</Text>
-            </View>
-            <ChevronRight size={20} color={COLORS.text.muted} />
-          </TouchableOpacity>
+          {/* Colorful Course Cards */}
+          {hasCourses && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.coursesScroll}
+              contentContainerStyle={styles.coursesContainer}
+            >
+              {courses.map((course, index) => (
+                <ColorfulCourseCard
+                  key={course.id}
+                  course={course}
+                  progress={course.progress || 0}
+                  onPress={() => handleCoursePress(course)}
+                  index={index}
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
-        {/* My Courses */}
-        {hasCourses && (
-          <View style={styles.coursesSection}>
-            <Text style={styles.sectionTitle}>My Courses</Text>
-            <Text style={styles.sectionSubtitle}>
-              {courses.length} {courses.length === 1 ? 'course' : 'courses'} created
-            </Text>
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                progress={course.progress || 0}
-                onPress={() => handleCoursePress(course)}
-              />
-            ))}
+        {/* Learn Something New */}
+        <TouchableOpacity style={styles.learnNewCard} onPress={handleLearnNew}>
+          <View style={styles.learnNewIcon}>
+            <Plus size={24} color="#FFFFFF" />
           </View>
-        )}
+          <View style={styles.learnNewText}>
+            <Text style={styles.learnNewTitle}>Learn Something New</Text>
+            <Text style={styles.learnNewSubtitle}>Explore any topic</Text>
+          </View>
+          <ChevronRight size={20} color={COLORS.text.secondary} />
+        </TouchableOpacity>
 
         {/* Empty State */}
         {!hasCourses && (
@@ -275,7 +326,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D5FF',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -284,66 +335,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
   },
+  headerLeft: {
+    flex: 1,
+  },
   greeting: {
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 28,
-    color: COLORS.text.primary,
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
-  subtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 16,
-    color: COLORS.text.secondary,
+  membershipBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 4,
+  },
+  membershipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4CAF50',
+  },
+  membershipText: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 13,
+    color: '#B0B0B0',
   },
   profileButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-    marginBottom: 20,
-  },
-  statBadge: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 16,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statBadgeStreak: {
-    backgroundColor: '#FFF5F0',
-  },
-  statBadgeXP: {
-    backgroundColor: '#FFFBEB',
-  },
-  statValue: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 20,
-    color: COLORS.text.primary,
-  },
-  statLabel: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 12,
-    color: COLORS.text.secondary,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   scrollView: {
     flex: 1,
@@ -351,114 +377,171 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 24,
   },
-  actionsContainer: {
-    gap: 12,
-    marginBottom: 24,
+  yourCoursesSection: {
+    marginBottom: 32,
   },
-  continueCard: {
+  yourCoursesTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 22,
+    color: '#FFFFFF',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  categoriesScroll: {
+    marginBottom: 16,
+  },
+  categoriesContainer: {
+    gap: 10,
+    paddingRight: 24,
+  },
+  categoryPill: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#2A2A2A',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  categoryPillSelected: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  categoryPillText: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  categoryPillTextSelected: {
+    color: '#FFFFFF',
+    fontFamily: 'Urbanist_600SemiBold',
+  },
+  coursesScroll: {
+    marginTop: 8,
+  },
+  coursesContainer: {
+    gap: 16,
+    paddingRight: 24,
+  },
+  colorfulCourseCard: {
+    width: 160,
+    height: 180,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    marginRight: 12,
   },
-  continueGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  colorfulCardContent: {
+    flex: 1,
+    padding: 16,
     justifyContent: 'space-between',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
   },
-  continueContent: {
+  colorfulCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  continueIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  colorfulCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  continueText: {},
-  continueTitle: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 18,
-    color: '#FFFFFF',
-  },
-  continueSubtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
-  },
-  newCard: {
+  colorfulCardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  colorfulCardBadgeText: {
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
+  colorfulCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  colorfulCardTitle: {
+    fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+    flex: 1,
+    marginRight: 8,
+    lineHeight: 20,
+  },
+  colorfulCardArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  learnNewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
-  newIcon: {
+  learnNewIcon: {
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: `${COLORS.primary}15`,
+    backgroundColor: '#2A2A2A',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  newText: {
+  learnNewText: {
     flex: 1,
   },
-  newTitle: {
+  learnNewTitle: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
-  newSubtitle: {
+  learnNewSubtitle: {
     fontFamily: 'Urbanist_400Regular',
     fontSize: 13,
     color: COLORS.text.secondary,
     marginTop: 2,
   },
-  coursesSection: {
-    marginTop: 8,
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  sectionTitle: {
-    fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 18,
-    color: COLORS.text.primary,
-    marginBottom: 4,
+  emptyTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 22,
+    color: '#FFFFFF',
+    marginTop: 20,
   },
-  sectionSubtitle: {
+  emptySubtitle: {
     fontFamily: 'Urbanist_400Regular',
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.text.secondary,
-    marginBottom: 16,
+    marginTop: 8,
+    textAlign: 'center',
   },
+  // Legacy styles (keeping for compatibility)
   courseCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   courseIcon: {
     width: 48,
@@ -474,7 +557,7 @@ const styles = StyleSheet.create({
   courseTitle: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   courseNext: {
     fontFamily: 'Urbanist_400Regular',
@@ -485,7 +568,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 6,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#2A2A2A',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -495,22 +578,5 @@ const styles = StyleSheet.create({
   },
   courseArrow: {
     marginLeft: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 22,
-    color: COLORS.text.primary,
-    marginTop: 20,
-  },
-  emptySubtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 15,
-    color: COLORS.text.secondary,
-    marginTop: 8,
-    textAlign: 'center',
   },
 });

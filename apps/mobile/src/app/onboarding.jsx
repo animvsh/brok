@@ -87,18 +87,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#FFE5EC', '#E8D5FF', '#D5E5FF', '#E0F4FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Cloud decorations */}
-      <View style={[styles.cloud, styles.cloud1]} />
-      <View style={[styles.cloud, styles.cloud2]} />
-      <View style={[styles.cloud, styles.cloud3]} />
+      <StatusBar barStyle="light-content" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -204,12 +193,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFE5EC',
-  },
-  cloud: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    borderRadius: 100,
+    backgroundColor: '#000000',
   },
   cloud1: {
     width: 120,
@@ -235,7 +219,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 32,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 32,
     lineHeight: 42,
   },
@@ -245,14 +229,11 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   pillSelected: {
     backgroundColor: '#FFFFFF',
@@ -271,7 +252,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   pillTextSelected: {
     color: COLORS.primary,
@@ -291,19 +272,16 @@ const styles = StyleSheet.create({
   },
   customInputContainer: {
     marginTop: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   customInput: {
     fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     minHeight: 60,
     textAlignVertical: 'top',
   },

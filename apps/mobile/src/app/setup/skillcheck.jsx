@@ -136,13 +136,7 @@ export default function SkillCheckScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#E0F4FF', '#D5E5FF', '#E8D5FF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Progress indicator */}
       <View style={styles.progressContainer}>
@@ -236,7 +230,7 @@ export default function SkillCheckScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E0F4FF',
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -277,7 +271,7 @@ const styles = StyleSheet.create({
   questionText: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 26,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 28,
     lineHeight: 36,
   },
@@ -288,14 +282,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   optionButtonSelected: {
     backgroundColor: COLORS.primary,
@@ -304,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   optionTextSelected: {
     color: '#FFFFFF',
@@ -348,7 +339,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.98)',
+    backgroundColor: 'rgba(0,0,0,0.98)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
@@ -356,7 +347,7 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 22,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginTop: 24,
     textAlign: 'center',
   },

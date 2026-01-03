@@ -51,13 +51,7 @@ export default function IntentScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={['#D5E5FF', '#E8D5FF', '#FFE5EC']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <StatusBar barStyle="light-content" />
 
       {/* Progress indicator */}
       <View style={styles.progressContainer}>
@@ -69,7 +63,7 @@ export default function IntentScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={COLORS.text.primary} />
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -137,7 +131,7 @@ export default function IntentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#D5E5FF',
+    backgroundColor: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -171,7 +165,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'Montserrat_700Bold',
     fontSize: 28,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     marginBottom: 24,
     lineHeight: 38,
   },
@@ -181,14 +175,11 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   optionCardSelected: {
     borderWidth: 2,
@@ -208,7 +199,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontFamily: 'Urbanist_600SemiBold',
     fontSize: 16,
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
   },
   optionLabelSelected: {
     color: COLORS.primary,

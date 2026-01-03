@@ -18,7 +18,7 @@ import { useAuth } from '@/utils/auth';
 import { supabase } from '@/utils/auth/supabase';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
-// Sample skill check questions
+// Skill check questions - reduced to 2 essential questions
 const SAMPLE_QUESTIONS = [
   {
     id: 1,
@@ -32,18 +32,6 @@ const SAMPLE_QUESTIONS = [
     options: ['Never', 'A little', 'Quite a bit', 'Extensively'],
     weights: [0, 0.25, 0.5, 0.85],
   },
-  {
-    id: 3,
-    question: 'Can you explain the basics to someone?',
-    options: ['Not at all', 'Maybe a little', 'Somewhat', 'Definitely'],
-    weights: [0, 0.3, 0.6, 0.9],
-  },
-  {
-    id: 4,
-    question: 'How confident do you feel?',
-    options: ['Not confident', 'Slightly', 'Fairly confident', 'Very confident'],
-    weights: [0, 0.3, 0.6, 0.9],
-  },
 ];
 
 export default function SkillCheckScreen() {
@@ -55,6 +43,7 @@ export default function SkillCheckScreen() {
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [answers, setAnswers] = useState([]);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -86,6 +75,15 @@ export default function SkillCheckScreen() {
   };
 
   const handleNext = async () => {
+    // Save current answer
+    const currentAnswer = {
+      questionId: question.id,
+      selected,
+      weight: question.weights[selected],
+    };
+    const newAnswers = [...answers, currentAnswer];
+    setAnswers(newAnswers);
+
     if (!isLast) {
       Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
         setCurrentQ(currentQ + 1);
@@ -96,9 +94,15 @@ export default function SkillCheckScreen() {
     } else {
       setLoading(true);
 
+      // Calculate average skill level from all answers
+      const avgSkillLevel = newAnswers.length > 0
+        ? newAnswers.reduce((sum, a) => sum + (a.weight || 0), 0) / newAnswers.length
+        : 0;
+
       try {
         const requestBody = {
           topic: topic || 'General Learning',
+          skill_level: avgSkillLevel, // Send skill level to personalize course
         };
         
         if (user?.id) {
@@ -142,7 +146,6 @@ export default function SkillCheckScreen() {
 
       {/* Progress indicator */}
       <View style={styles.progressContainer}>
-        <View style={styles.progressDot} />
         <View style={styles.progressDot} />
         <View style={styles.progressDot} />
       </View>

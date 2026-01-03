@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,12 @@ import {
   StyleSheet,
   Dimensions,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQuery } from '@tanstack/react-query';
 import Svg, { Circle, Line, Defs, RadialGradient, Stop } from 'react-native-svg';
 import {
   ArrowLeft,
@@ -20,38 +22,15 @@ import {
   Star,
   Sparkles,
   X,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { COLORS } from '@/components/theme/colors';
+import { api } from '@/lib/api';
+import { useAuth } from '@/utils/auth';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// Sample skill graph data
-const SAMPLE_GRAPH = {
-  nodes: [
-    { id: 1, name: 'Arrays', x: 0.5, y: 0.15, mastery: 0.9, status: 'mastered' },
-    { id: 2, name: 'Linked Lists', x: 0.3, y: 0.35, mastery: 0.65, status: 'learning' },
-    { id: 3, name: 'Hash Tables', x: 0.7, y: 0.35, mastery: 0.45, status: 'learning' },
-    { id: 4, name: 'Stacks', x: 0.2, y: 0.55, mastery: 0.2, status: 'started' },
-    { id: 5, name: 'Queues', x: 0.5, y: 0.55, mastery: 0, status: 'locked' },
-    { id: 6, name: 'Trees', x: 0.8, y: 0.55, mastery: 0, status: 'locked' },
-    { id: 7, name: 'Graphs', x: 0.35, y: 0.75, mastery: 0, status: 'locked' },
-    { id: 8, name: 'Heaps', x: 0.65, y: 0.75, mastery: 0, status: 'locked' },
-  ],
-  edges: [
-    { from: 1, to: 2 },
-    { from: 1, to: 3 },
-    { from: 2, to: 4 },
-    { from: 2, to: 5 },
-    { from: 3, to: 5 },
-    { from: 3, to: 6 },
-    { from: 4, to: 7 },
-    { from: 5, to: 7 },
-    { from: 5, to: 8 },
-    { from: 6, to: 8 },
-  ],
-};
 
 function getNodeColor(status, mastery) {
   if (status === 'mastered') return '#10B981';
@@ -70,12 +49,114 @@ function getNodeGlow(status) {
 export default function SkillGraphScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { courseId } = useLocalSearchParams();
+  const { courseId, threadId } = useLocalSearchParams();
+  const { isAuthenticated } = useAuth();
   const [selectedNode, setSelectedNode] = useState(null);
+
+  const activeThreadId = threadId || courseId;
+
+  // Fetch skill graph from API
+  const {
+    data: graphData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['skillGraph', activeThreadId],
+    queryFn: () => api.graphs.visualize(activeThreadId),
+    enabled: !!activeThreadId && isAuthenticated,
+  });
+
+  // Process graph data into display format
+  const graph = useMemo(() => {
+    if (!graphData?.nodes) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Build mastery map
+    const masteryMap = new Map();
+    (graphData.masteryStates || []).forEach((state) => {
+      masteryMap.set(state.node_id, state);
+    });
+
+    // Build set of mastered node IDs for unlocking
+    const masteredIds = new Set();
+    (graphData.masteryStates || []).forEach((state) => {
+      if ((state.mastery_p || 0) >= 0.9) {
+        masteredIds.add(state.node_id);
+      }
+    });
+
+    // Calculate node positions using a simple layout algorithm
+    const nodeCount = graphData.nodes.length;
+    const nodes = graphData.nodes.map((node, index) => {
+      const masteryState = masteryMap.get(node.id);
+      const masteryP = masteryState?.mastery_p || 0;
+
+      // Determine status
+      let status = 'locked';
+      const prerequisites = node.prerequisites || [];
+      const prereqsMet = prerequisites.length === 0 ||
+        prerequisites.every((prereqId) => masteredIds.has(prereqId));
+
+      if (masteryP >= 0.9) {
+        status = 'mastered';
+      } else if (masteryP > 0) {
+        status = 'learning';
+      } else if (prereqsMet) {
+        status = 'started';
+      }
+
+      // Simple grid layout with some variation
+      const cols = Math.ceil(Math.sqrt(nodeCount));
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      const totalRows = Math.ceil(nodeCount / cols);
+
+      // Add some variation to positions
+      const xBase = (col + 0.5) / cols;
+      const yBase = (row + 0.5) / totalRows;
+
+      // Use node index to create consistent but varied positions
+      const xOffset = ((node.id?.charCodeAt?.(0) || index) % 10 - 5) * 0.02;
+      const yOffset = ((node.id?.charCodeAt?.(1) || index + 3) % 10 - 5) * 0.02;
+
+      return {
+        id: node.id,
+        name: node.name || node.skill_name || `Skill ${index + 1}`,
+        x: Math.max(0.1, Math.min(0.9, xBase + xOffset)),
+        y: Math.max(0.1, Math.min(0.85, 0.1 + yBase * 0.75 + yOffset)),
+        mastery: masteryP,
+        status,
+        prerequisites,
+      };
+    });
+
+    // Build edges from prerequisites
+    const edges = [];
+    nodes.forEach((node) => {
+      (node.prerequisites || []).forEach((prereqId) => {
+        const fromNode = nodes.find((n) => n.id === prereqId);
+        if (fromNode) {
+          edges.push({ from: prereqId, to: node.id });
+        }
+      });
+    });
+
+    // Also add edges from graphData if available
+    (graphData.edges || []).forEach((edge) => {
+      const existingEdge = edges.find(
+        (e) => e.from === edge.from_node_id && e.to === edge.to_node_id
+      );
+      if (!existingEdge) {
+        edges.push({ from: edge.from_node_id, to: edge.to_node_id });
+      }
+    });
+
+    return { nodes, edges };
+  }, [graphData]);
 
   if (!fontsLoaded) return null;
 
-  const graph = SAMPLE_GRAPH;
   const graphWidth = SCREEN_WIDTH - 40;
   const graphHeight = SCREEN_HEIGHT * 0.55;
 
@@ -93,7 +174,11 @@ export default function SkillGraphScreen() {
     setSelectedNode(null);
     router.push({
       pathname: '/lesson',
-      params: { courseId, skillId: selectedNode.id },
+      params: {
+        threadId: activeThreadId,
+        courseId: activeThreadId,
+        skillId: selectedNode.id,
+      },
     });
   };
 
@@ -101,7 +186,12 @@ export default function SkillGraphScreen() {
     setSelectedNode(null);
     router.push({
       pathname: '/lesson',
-      params: { courseId, skillId: selectedNode.id, mode: 'review' },
+      params: {
+        threadId: activeThreadId,
+        courseId: activeThreadId,
+        skillId: selectedNode.id,
+        mode: 'review',
+      },
     });
   };
 
@@ -110,6 +200,67 @@ export default function SkillGraphScreen() {
     x: node.x * graphWidth,
     y: node.y * graphHeight,
   });
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <ActivityIndicator size="large" color="#FFFFFF" />
+        <Text style={styles.loadingText}>Loading skill map...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <AlertTriangle size={48} color="#EF4444" />
+        <Text style={styles.errorTitle}>Oops!</Text>
+        <Text style={styles.errorText}>{error.message}</Text>
+        <TouchableOpacity style={styles.backButtonAlt} onPress={handleBack}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (graph.nodes.length === 0) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <BrokMascot size={120} mood="thinking" />
+        <Text style={styles.emptyTitle}>No Skills Yet</Text>
+        <Text style={styles.emptyText}>
+          Start learning to build your skill map!
+        </Text>
+        <TouchableOpacity style={styles.backButtonAlt} onPress={handleBack}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -187,6 +338,8 @@ export default function SkillGraphScreen() {
           {graph.edges.map((edge, index) => {
             const fromNode = graph.nodes.find((n) => n.id === edge.from);
             const toNode = graph.nodes.find((n) => n.id === edge.to);
+            if (!fromNode || !toNode) return null;
+
             const from = getNodePosition(fromNode);
             const to = getNodePosition(toNode);
             const isActive = fromNode.status !== 'locked' && toNode.status !== 'locked';
@@ -259,6 +412,7 @@ export default function SkillGraphScreen() {
                   styles.nodeLabelText,
                   node.status === 'locked' && styles.nodeLabelLocked,
                 ]}
+                numberOfLines={2}
               >
                 {node.name}
               </Text>
@@ -359,6 +513,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 16,
+  },
+  errorTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginTop: 16,
+  },
+  errorText: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginTop: 20,
+  },
+  emptyText: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  backButtonAlt: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 50,
+  },
+  backButtonText: {
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   starsContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -478,6 +682,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: COLORS.text.primary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   modalMastery: {
     fontFamily: 'Urbanist_500Medium',

@@ -6,6 +6,7 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -22,27 +23,9 @@ import {
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
-import { supabase } from '@/utils/auth/supabase';
+import { api } from '@/lib/api';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
-
-// Sample active courses
-const SAMPLE_COURSES = [
-  {
-    id: '1',
-    title: 'Data Structures',
-    progress: 45,
-    nextLesson: 'Arrays Basics',
-    color: '#6366F1',
-  },
-  {
-    id: '2',
-    title: 'Spanish',
-    progress: 20,
-    nextLesson: 'Basic Greetings',
-    color: '#EC4899',
-  },
-];
 
 function CourseCard({ course, onPress }) {
   return (
@@ -67,45 +50,46 @@ function CourseCard({ course, onPress }) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  // Fetch user stats
-  const { data: stats } = useQuery({
+  // Fetch user stats from API
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['userStats', user?.id],
     queryFn: async () => {
-      if (!user?.id) return { streak: 3, xp: 450 };
-      const { data } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      return data || { streak: 3, xp: 450 };
+      try {
+        const data = await api.progress.stats();
+        return data;
+      } catch (error) {
+        console.log('Stats fetch error (using defaults):', error.message);
+        return { streak: 0, xp: 0 };
+      }
     },
-    enabled: !!user?.id,
+    enabled: isAuthenticated,
   });
 
-  // Fetch active courses
-  const { data: coursesData } = useQuery({
+  // Fetch active courses/threads from API
+  const { data: coursesData, isLoading: coursesLoading } = useQuery({
     queryKey: ['activeCourses', user?.id],
     queryFn: async () => {
-      if (!user?.id) return SAMPLE_COURSES;
-      const { data } = await supabase
-        .from('learning_threads')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('updated_at', { ascending: false });
-      return data?.length ? data : SAMPLE_COURSES;
+      try {
+        const data = await api.threads.list();
+        // API returns { threads: [...], course: {...} }
+        return data.threads || [];
+      } catch (error) {
+        console.log('Courses fetch error:', error.message);
+        return [];
+      }
     },
-    enabled: !!user?.id,
+    enabled: isAuthenticated,
   });
 
   if (!fontsLoaded) return null;
 
-  const streak = stats?.streak || stats?.current_streak || 3;
-  const xp = stats?.xp || stats?.total_xp || 450;
-  const courses = coursesData || SAMPLE_COURSES;
+  const streak = stats?.streak || stats?.current_streak || 0;
+  const xp = stats?.xp || stats?.total_xp || 0;
+  const courses = coursesData || [];
   const hasCourses = courses.length > 0;
+  const isLoading = statsLoading || coursesLoading;
 
   const handleContinueLearning = () => {
     if (courses[0]) {

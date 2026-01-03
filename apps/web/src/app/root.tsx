@@ -118,7 +118,9 @@ export function Layout({ children }: { children: ReactNode }) {
         <Links />
       </head>
       <body>
-        <ClientOnly loader={() => children} />
+        <ErrorBoundaryWrapper>
+          {children}
+        </ErrorBoundaryWrapper>
         <Toaster position="bottom-right" />
         <ScrollRestoration />
         <Scripts />

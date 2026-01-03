@@ -1,7 +1,7 @@
 import supabase from '@/app/api/utils/supabase';
 import { getUserId, checkRateLimit, validateUUID } from '@/app/api/utils/auth';
 import { updateMastery, calculateEvidenceStrength } from '@/app/api/utils/mastery/updateMastery';
-import { checkMastery } from '@/app/api/utils/mastery/checkGating';
+import { checkMastery, checkPrerequisites } from '@/app/api/utils/mastery/checkGating';
 import { CONFIRMATION_SCORE } from '@/app/api/utils/mastery/constants';
 import { gradeResponse } from '@/app/api/utils/grading';
 
@@ -72,6 +72,56 @@ export async function POST(request, { params }) {
     if (threadError || !thread || thread.user_id !== userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 403 });
     }
+
+    // === SERVER-SIDE GATING: Verify skill is unlocked ===
+    // Fetch skill graph to get prerequisites
+    const { data: graph } = await supabase
+      .from('skill_graph_instances')
+      .select('nodes, edges')
+      .eq('thread_id', unit.thread_id)
+      .single();
+
+    if (graph) {
+      // Fetch all mastery states for this thread
+      const { data: allMasteryStates } = await supabase
+        .from('mastery_state')
+        .select('node_id, mastery_p, uncertainty, stability, confirmation_count, unit_types_used, has_applied_confirmation, misconception_tags')
+        .eq('thread_id', unit.thread_id)
+        .eq('user_id', userId);
+
+      // Build set of mastered nodes
+      const masteredNodes = new Set();
+      for (const state of allMasteryStates || []) {
+        const { isMastered } = checkMastery(state);
+        if (isMastered) {
+          masteredNodes.add(state.node_id);
+        }
+      }
+
+      // Get prerequisites for this node from graph edges
+      const prerequisites = (graph.edges || [])
+        .filter(edge => edge.to_node_id === unit.node_id && (edge.type === 'prerequisite' || !edge.type))
+        .map(edge => edge.from_node_id);
+
+      // Also check node-level prerequisites from graph.nodes
+      const nodeRef = (graph.nodes || []).find(n => n.node_id === unit.node_id);
+      if (nodeRef?.prerequisites) {
+        prerequisites.push(...nodeRef.prerequisites.filter(p => !prerequisites.includes(p)));
+      }
+
+      // Check if prerequisites are met
+      const { canStart, unmetPrereqs } = checkPrerequisites(unit.node_id, prerequisites, masteredNodes);
+
+      if (!canStart) {
+        return Response.json({
+          error: 'Skill locked',
+          message: 'You must master prerequisite skills before practicing this one.',
+          unmetPrerequisites: unmetPrereqs,
+          hint: 'Complete the required skills first, then come back to this one.',
+        }, { status: 403 });
+      }
+    }
+    // === END SERVER-SIDE GATING ===
 
     // Grade the response
     const gradedResult = await gradeResponse(unit, response);

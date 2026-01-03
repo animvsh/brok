@@ -23,21 +23,29 @@ import {
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
 import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
 import { api } from '@/lib/api';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
-function CourseCard({ course, onPress }) {
+function CourseCard({ course, progress = 0, onPress }) {
+  // Generate a consistent color based on course ID
+  const colors = [COLORS.primary, '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444'];
+  const colorIndex = parseInt(course.id?.slice(0, 2) || '0', 16) % colors.length;
+  const courseColor = colors[colorIndex];
+
   return (
     <TouchableOpacity style={styles.courseCard} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.courseIcon, { backgroundColor: `${course.color}20` }]}>
-        <BookOpen size={24} color={course.color} />
+      <View style={[styles.courseIcon, { backgroundColor: `${courseColor}20` }]}>
+        <BookOpen size={24} color={courseColor} />
       </View>
       <View style={styles.courseInfo}>
-        <Text style={styles.courseTitle}>{course.title}</Text>
-        <Text style={styles.courseNext}>Next: {course.nextLesson}</Text>
+        <Text style={styles.courseTitle} numberOfLines={1}>{course.title}</Text>
+        <Text style={styles.courseNext}>
+          {course.total_modules || 0} modules • {progress}% complete
+        </Text>
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: `${course.progress}%`, backgroundColor: course.color }]} />
+          <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: courseColor }]} />
         </View>
       </View>
       <View style={styles.courseArrow}>
@@ -67,20 +75,61 @@ export default function HomeScreen() {
     enabled: isAuthenticated,
   });
 
-  // Fetch active courses/threads from API
+  // Fetch user's courses from database
   const { data: coursesData, isLoading: coursesLoading } = useQuery({
-    queryKey: ['activeCourses', user?.id],
+    queryKey: ['userCourses', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       try {
-        const data = await api.threads.list();
-        // API returns { threads: [...], course: {...} }
-        return data.threads || [];
+        const { data: courses, error } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.log('Courses fetch error:', error.message);
+          return [];
+        }
+
+        // Fetch progress for each course
+        const coursesWithProgress = await Promise.all(
+          (courses || []).map(async (course) => {
+            // Get total modules for this course
+            const { data: modules } = await supabase
+              .from('modules')
+              .select('id')
+              .eq('course_id', course.id);
+
+            // Get completed modules for this user
+            const moduleIds = modules?.map((m) => m.id) || [];
+            let completedCount = 0;
+            if (moduleIds.length > 0) {
+              const { data: completions } = await supabase
+                .from('module_completions')
+                .select('module_id')
+                .eq('user_id', user.id)
+                .in('module_id', moduleIds);
+              completedCount = completions?.length || 0;
+            }
+
+            const totalModules = modules?.length || course.total_modules || 1;
+            const progress = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
+
+            return {
+              ...course,
+              progress,
+            };
+          })
+        );
+
+        return coursesWithProgress;
       } catch (error) {
         console.log('Courses fetch error:', error.message);
         return [];
       }
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !!user?.id,
   });
 
   if (!fontsLoaded) return null;
@@ -89,7 +138,6 @@ export default function HomeScreen() {
   const xp = stats?.xp || stats?.total_xp || 0;
   const courses = coursesData || [];
   const hasCourses = courses.length > 0;
-  const isLoading = statsLoading || coursesLoading;
 
   const handleContinueLearning = () => {
     if (courses[0]) {
@@ -191,14 +239,18 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Active Courses */}
+        {/* My Courses */}
         {hasCourses && (
           <View style={styles.coursesSection}>
-            <Text style={styles.sectionTitle}>Your Courses</Text>
+            <Text style={styles.sectionTitle}>My Courses</Text>
+            <Text style={styles.sectionSubtitle}>
+              {courses.length} {courses.length === 1 ? 'course' : 'courses'} created
+            </Text>
             {courses.map((course) => (
               <CourseCard
                 key={course.id}
                 course={course}
+                progress={course.progress || 0}
                 onPress={() => handleCoursePress(course)}
               />
             ))}
@@ -387,6 +439,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 18,
     color: COLORS.text.primary,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 14,
+    color: COLORS.text.secondary,
     marginBottom: 16,
   },
   courseCard: {

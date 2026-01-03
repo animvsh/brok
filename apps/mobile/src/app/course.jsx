@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,48 +7,120 @@ import {
   StatusBar,
   StyleSheet,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft,
   Play,
-  Map,
-  RotateCcw,
   Flame,
   Target,
   ChevronRight,
   BookOpen,
   Lock,
-  AlertTriangle,
   CheckCircle,
+  Circle,
+  Star,
 } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
-import { COLORS } from '@/components/theme/colors';
-import { api } from '@/lib/api';
 import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
+import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
-function SkillPill({ skill }) {
-  const isLocked = skill.status === 'locked';
-  const isMastered = skill.status === 'mastered';
+const { width } = Dimensions.get('window');
+
+// Module status types
+const MODULE_STATUS = {
+  LOCKED: 'locked',
+  AVAILABLE: 'available',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+};
+
+function ModuleNode({ module, index, totalModules, status, onPress, isLast }) {
+  const isLocked = status === MODULE_STATUS.LOCKED;
+  const isCompleted = status === MODULE_STATUS.COMPLETED;
+  const isInProgress = status === MODULE_STATUS.IN_PROGRESS;
+
+  // Calculate position for path layout
+  const isEven = index % 2 === 0;
+  const nodeWidth = (width - 80) / 2;
+  const left = isEven ? 20 : nodeWidth + 40;
 
   return (
-    <View style={[styles.skillPill, isLocked && styles.skillPillLocked]}>
-      <View
+    <View style={styles.modulePathContainer}>
+      {/* Connection line */}
+      {!isLast && (
+        <View
+          style={[
+            styles.pathLine,
+            {
+              left: isEven ? nodeWidth + 20 : 20,
+              top: 60,
+              height: 100,
+            },
+          ]}
+        />
+      )}
+
+      {/* Module Node */}
+      <TouchableOpacity
         style={[
-          styles.skillMastery,
-          { width: `${(skill.mastery || 0) * 100}%` },
-          isMastered && styles.skillMasteryComplete,
+          styles.moduleNode,
+          {
+            left,
+            opacity: isLocked ? 0.5 : 1,
+          },
         ]}
-      />
-      <Text style={[styles.skillName, isLocked && styles.skillNameLocked]}>
-        {skill.name}
-      </Text>
-      {isLocked && <Lock size={14} color={COLORS.text.muted} />}
-      {isMastered && <CheckCircle size={14} color="#22C55E" />}
+        onPress={isLocked ? null : onPress}
+        disabled={isLocked}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={
+            isCompleted
+              ? ['#22C55E', '#16A34A']
+              : isInProgress
+              ? [COLORS.primary, COLORS.primaryDark]
+              : isLocked
+              ? ['#E5E7EB', '#D1D5DB']
+              : ['#EEF2FF', '#E0E7FF']
+          }
+          style={styles.moduleGradient}
+        >
+          {isLocked ? (
+            <Lock size={24} color="#9CA3AF" />
+          ) : isCompleted ? (
+            <CheckCircle size={24} color="#FFFFFF" fill="#FFFFFF" />
+          ) : (
+            <Circle size={24} color={isInProgress ? '#FFFFFF' : COLORS.primary} fill="transparent" strokeWidth={3} />
+          )}
+        </LinearGradient>
+
+        <View style={styles.moduleInfo}>
+          <Text
+            style={[
+              styles.moduleNumber,
+              { color: isLocked ? '#9CA3AF' : isCompleted ? '#22C55E' : COLORS.text.primary },
+            ]}
+          >
+            {index + 1}
+          </Text>
+          <Text
+            style={[
+              styles.moduleTitle,
+              { color: isLocked ? '#9CA3AF' : COLORS.text.primary },
+            ]}
+            numberOfLines={2}
+          >
+            {module.title}
+          </Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -56,152 +128,171 @@ function SkillPill({ skill }) {
 export default function CourseScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { courseId, threadId, topic } = useLocalSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const { courseId, topic } = useLocalSearchParams();
 
-  // Use threadId or courseId
-  const activeThreadId = threadId || courseId;
-
-  // Fetch thread details
-  const {
-    data: threadsData,
-    isLoading: threadsLoading,
-    error: threadsError,
-  } = useQuery({
-    queryKey: ['activeCourses'],
-    queryFn: () => api.threads.list(),
-    enabled: isAuthenticated,
+  // Fetch course data
+  const { data: course, isLoading: courseLoading } = useQuery({
+    queryKey: ['course', courseId],
+    queryFn: async () => {
+      if (!courseId || courseId === 'new') return null;
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', courseId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!courseId && courseId !== 'new',
   });
 
-  // Fetch skill graph for this thread
-  const {
-    data: graphData,
-    isLoading: graphLoading,
-  } = useQuery({
-    queryKey: ['skillGraph', activeThreadId],
-    queryFn: () => api.graphs.visualize(activeThreadId),
-    enabled: !!activeThreadId && isAuthenticated,
+  // Fetch modules for this course
+  const { data: modules, isLoading: modulesLoading } = useQuery({
+    queryKey: ['courseModules', courseId],
+    queryFn: async () => {
+      if (!courseId || courseId === 'new') return [];
+      const { data, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('module_order', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!courseId && courseId !== 'new',
   });
 
-  // Fetch user stats
-  const { data: stats } = useQuery({
-    queryKey: ['userStats'],
-    queryFn: () => api.progress.stats(),
-    enabled: isAuthenticated,
+  // Fetch user progress
+  const { data: userProgress } = useQuery({
+    queryKey: ['userProgress', user?.id, courseId],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      return data;
+    },
+    enabled: !!user?.id,
   });
+
+  // Fetch module completions for this course only
+  const { data: moduleCompletions } = useQuery({
+    queryKey: ['moduleCompletions', user?.id, courseId],
+    queryFn: async () => {
+      if (!user?.id || !courseId || courseId === 'new') return [];
+      
+      // First get all module IDs for this course
+      const { data: courseModules } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('course_id', courseId);
+      
+      if (!courseModules || courseModules.length === 0) return [];
+      
+      const moduleIds = courseModules.map((m) => m.id);
+      
+      // Then get completions only for these modules
+      const { data, error } = await supabase
+        .from('module_completions')
+        .select('module_id')
+        .eq('user_id', user.id)
+        .in('module_id', moduleIds);
+      
+      if (error) throw error;
+      return data?.map((c) => c.module_id) || [];
+    },
+    enabled: !!user?.id && !!courseId && courseId !== 'new',
+  });
+
+  // Calculate module statuses
+  const getModuleStatus = (module, index) => {
+    const completedModules = moduleCompletions || [];
+    const isCompleted = completedModules.includes(module.id);
+    const currentModuleId = userProgress?.current_module_id;
+    const isCurrent = currentModuleId === module.id;
+
+    if (isCompleted) return MODULE_STATUS.COMPLETED;
+    if (isCurrent) return MODULE_STATUS.IN_PROGRESS;
+    if (index === 0) return MODULE_STATUS.AVAILABLE;
+    // Check if previous module is completed
+    const prevModule = modules?.[index - 1];
+    if (prevModule && completedModules.includes(prevModule.id)) {
+      return MODULE_STATUS.AVAILABLE;
+    }
+    return MODULE_STATUS.LOCKED;
+  };
+
+  // Calculate overall progress
+  const calculateProgress = () => {
+    if (!modules || modules.length === 0) return 0;
+    const completedCount = (moduleCompletions || []).length;
+    const progress = Math.round((completedCount / modules.length) * 100);
+    // Cap progress at 100% to prevent showing >100%
+    return Math.min(progress, 100);
+  };
 
   if (!fontsLoaded) return null;
 
-  const isLoading = threadsLoading || graphLoading;
+  const isLoading = courseLoading || modulesLoading;
+  const progress = calculateProgress();
+  const streak = userProgress?.current_streak || 0;
+  const xp = userProgress?.total_xp || 0;
 
-  // Find the current thread from the list
-  const thread = threadsData?.threads?.find((t) => t.id === activeThreadId);
-
-  // Build skills from graph data
-  const skills = [];
-  if (graphData?.nodes) {
-    const masteryMap = new Map();
-    (graphData.masteryStates || []).forEach((state) => {
-      masteryMap.set(state.node_id, state);
-    });
-
-    graphData.nodes.forEach((node) => {
-      const masteryState = masteryMap.get(node.id);
-      const masteryP = masteryState?.mastery_p || 0;
-      let status = 'locked';
-
-      if (masteryP >= 0.9) {
-        status = 'mastered';
-      } else if (masteryP > 0) {
-        status = 'learning';
-      } else if (node.isUnlocked || node.prerequisites?.length === 0) {
-        status = 'started';
-      }
-
-      skills.push({
-        id: node.id,
-        name: node.name || node.skill_name,
-        mastery: masteryP,
-        status,
-      });
-    });
-  }
-
-  // Calculate progress
-  const progress = thread?.progress || 0;
-  const streak = stats?.streak || 0;
-
-  // Build course object
-  const course = {
-    id: activeThreadId,
-    title: thread?.title || topic || 'Learning',
-    progress,
-    streak,
-    dailyGoal: '10 min',
-    skills: skills.slice(0, 8), // Show first 8 skills
-    nextLesson: {
-      title: thread?.nextLesson || 'Continue learning',
-      type: 'practice',
-      time: '5 min',
-    },
-  };
+  const courseTitle = course?.title || topic || 'Course';
+  const courseDescription = course?.description || '';
+  const courseGoal = course?.goal || '';
 
   const handleBack = () => {
     router.replace('/home');
   };
 
+  const handleModulePress = (module) => {
+    router.push({
+      pathname: '/lesson',
+      params: {
+        courseId,
+        moduleId: module.id,
+        moduleTitle: module.title,
+      },
+    });
+  };
+
   const handleContinue = () => {
-    router.push({
-      pathname: '/lesson',
-      params: { threadId: activeThreadId, courseId: activeThreadId },
-    });
+    // Find the current or first available module
+    const currentModuleId = userProgress?.current_module_id;
+    let moduleToStart = null;
+
+    if (currentModuleId) {
+      moduleToStart = modules?.find((m) => m.id === currentModuleId);
+    }
+
+    if (!moduleToStart) {
+      // Find first available module
+      moduleToStart = modules?.find((m, idx) => getModuleStatus(m, idx) !== MODULE_STATUS.LOCKED);
+    }
+
+    if (moduleToStart) {
+      handleModulePress(moduleToStart);
+    }
   };
 
-  const handleViewSkillGraph = () => {
-    router.push({
-      pathname: '/skillgraph',
-      params: { threadId: activeThreadId, courseId: activeThreadId },
-    });
-  };
-
-  const handleReview = () => {
-    router.push({
-      pathname: '/lesson',
-      params: { threadId: activeThreadId, courseId: activeThreadId, mode: 'review' },
-    });
-  };
-
-  // Loading state
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" />
-        <LinearGradient
-          colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading course...</Text>
       </View>
     );
   }
 
-  // Error state
-  if (threadsError) {
+  if (!course && courseId !== 'new') {
     return (
       <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" />
-        <LinearGradient
-          colors={['#E8D5FF', '#D5E5FF', '#E0F4FF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <AlertTriangle size={48} color="#EF4444" />
-        <Text style={styles.errorTitle}>Oops!</Text>
-        <Text style={styles.errorText}>{threadsError.message}</Text>
+        <Text style={styles.errorText}>Course not found</Text>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -221,16 +312,18 @@ export default function CourseScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.headerBackButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <ArrowLeft size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{course.title}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {courseTitle}
+        </Text>
         <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Progress Card */}
@@ -238,89 +331,72 @@ export default function CourseScreen() {
           <View style={styles.progressHeader}>
             <View>
               <Text style={styles.progressLabel}>Your Progress</Text>
-              <Text style={styles.progressPercent}>{Math.round(course.progress)}%</Text>
+              <Text style={styles.progressPercent}>{progress}%</Text>
             </View>
             <BrokMascot size={80} mood="encouraging" />
           </View>
           <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBar, { width: `${course.progress}%` }]} />
+            <View style={[styles.progressBar, { width: `${progress}%` }]} />
           </View>
+          {courseDescription ? (
+            <Text style={styles.courseDescription}>{courseDescription}</Text>
+          ) : null}
+          {courseGoal ? (
+            <View style={styles.goalContainer}>
+              <Target size={16} color={COLORS.primary} />
+              <Text style={styles.goalText}>{courseGoal}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Flame size={20} color="#FF6B35" />
-            <Text style={styles.statValue}>{course.streak}</Text>
+            <Text style={styles.statValue}>{streak}</Text>
             <Text style={styles.statLabel}>Day Streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Target size={20} color="#10B981" />
-            <Text style={styles.statValue}>{course.dailyGoal}</Text>
-            <Text style={styles.statLabel}>Daily Goal</Text>
+            <Star size={20} color="#FFD700" />
+            <Text style={styles.statValue}>{xp}</Text>
+            <Text style={styles.statLabel}>Total XP</Text>
+          </View>
+          <View style={styles.statCard}>
+            <BookOpen size={20} color="#10B981" />
+            <Text style={styles.statValue}>{moduleCompletions?.length || 0}</Text>
+            <Text style={styles.statLabel}>Modules</Text>
           </View>
         </View>
 
-        {/* Next Up */}
+        {/* Learning Path */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Next Up</Text>
-          <TouchableOpacity style={styles.nextLessonCard} onPress={handleContinue}>
-            <View style={styles.nextLessonIcon}>
-              <BookOpen size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.nextLessonContent}>
-              <Text style={styles.nextLessonTitle}>{course.nextLesson.title}</Text>
-              <Text style={styles.nextLessonMeta}>
-                {course.nextLesson.type} • {course.nextLesson.time}
-              </Text>
-            </View>
-            <View style={styles.playButton}>
-              <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.sectionTitle}>Learning Path</Text>
+          <Text style={styles.sectionSubtitle}>
+            Complete modules in order to unlock new content
+          </Text>
 
-        {/* Skills Overview */}
-        {course.skills.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Skills</Text>
-              <TouchableOpacity onPress={handleViewSkillGraph} style={styles.viewAllButton}>
-                <Map size={16} color={COLORS.primary} />
-                <Text style={styles.viewAllText}>View Map</Text>
-              </TouchableOpacity>
+          {modules && modules.length > 0 ? (
+            <View style={styles.pathContainer}>
+              {modules.map((module, index) => {
+                const status = getModuleStatus(module, index);
+                return (
+                  <ModuleNode
+                    key={module.id}
+                    module={module}
+                    index={index}
+                    totalModules={modules.length}
+                    status={status}
+                    onPress={() => handleModulePress(module)}
+                    isLast={index === modules.length - 1}
+                  />
+                );
+              })}
             </View>
-            <View style={styles.skillsContainer}>
-              {course.skills.map((skill) => (
-                <SkillPill key={skill.id} skill={skill} />
-              ))}
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No modules available yet</Text>
             </View>
-          </View>
-        )}
-
-        {/* Actions */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.actionCard} onPress={handleViewSkillGraph}>
-            <View style={[styles.actionIcon, { backgroundColor: '#EEF2FF' }]}>
-              <Map size={20} color={COLORS.primary} />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Skill Graph</Text>
-              <Text style={styles.actionSubtitle}>See your progress map</Text>
-            </View>
-            <ChevronRight size={20} color={COLORS.text.muted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard} onPress={handleReview}>
-            <View style={[styles.actionIcon, { backgroundColor: '#FEF3C7' }]}>
-              <RotateCcw size={20} color="#B45309" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Review Past Lessons</Text>
-              <Text style={styles.actionSubtitle}>Strengthen your memory</Text>
-            </View>
-            <ChevronRight size={20} color={COLORS.text.muted} />
-          </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -348,38 +424,23 @@ const styles = StyleSheet.create({
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
   },
   loadingText: {
+    marginTop: 16,
     fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
     color: COLORS.text.secondary,
-    marginTop: 16,
-  },
-  errorTitle: {
-    fontFamily: 'Montserrat_700Bold',
-    fontSize: 24,
-    color: COLORS.text.primary,
-    marginTop: 16,
   },
   errorText: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 16,
-    color: COLORS.text.secondary,
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  backButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 50,
+    fontFamily: 'Montserrat_600SemiBold',
+    fontSize: 18,
+    color: COLORS.text.primary,
+    marginBottom: 16,
   },
   backButtonText: {
-    fontFamily: 'Montserrat_600SemiBold',
+    fontFamily: 'Urbanist_500Medium',
     fontSize: 16,
-    color: '#FFFFFF',
+    color: COLORS.primary,
   },
   header: {
     flexDirection: 'row',
@@ -388,7 +449,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerBackButton: {
+  backButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
@@ -400,7 +461,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.text.primary,
     textAlign: 'center',
-    marginHorizontal: 8,
   },
   scrollView: {
     flex: 1,
@@ -440,11 +500,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F0',
     borderRadius: 5,
     overflow: 'hidden',
+    marginBottom: 12,
   },
   progressBar: {
     height: '100%',
     backgroundColor: COLORS.primary,
     borderRadius: 5,
+  },
+  courseDescription: {
+    fontFamily: 'Urbanist_400Regular',
+    fontSize: 14,
+    color: COLORS.text.secondary,
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  goalContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  goalText: {
+    flex: 1,
+    fontFamily: 'Urbanist_500Medium',
+    fontSize: 13,
+    color: COLORS.primary,
   },
   statsRow: {
     flexDirection: 'row',
@@ -478,143 +558,74 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   sectionTitle: {
     fontFamily: 'Montserrat_600SemiBold',
-    fontSize: 18,
+    fontSize: 20,
     color: COLORS.text.primary,
+    marginBottom: 4,
   },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  viewAllText: {
-    fontFamily: 'Urbanist_500Medium',
+  sectionSubtitle: {
+    fontFamily: 'Urbanist_400Regular',
     fontSize: 14,
-    color: COLORS.primary,
+    color: COLORS.text.secondary,
+    marginBottom: 20,
   },
-  nextLessonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pathContainer: {
+    minHeight: 200,
+    position: 'relative',
+  },
+  modulePathContainer: {
+    position: 'relative',
+    marginBottom: 100,
+  },
+  pathLine: {
+    position: 'absolute',
+    width: 3,
+    backgroundColor: COLORS.primary,
+    opacity: 0.3,
+  },
+  moduleNode: {
+    position: 'absolute',
+    width: (width - 80) / 2,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
-  nextLessonIcon: {
+  moduleGradient: {
     width: 48,
     height: 48,
-    borderRadius: 14,
-    backgroundColor: `${COLORS.primary}15`,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginBottom: 8,
   },
-  nextLessonContent: {
-    flex: 1,
+  moduleInfo: {
+    alignItems: 'center',
   },
-  nextLessonTitle: {
+  moduleNumber: {
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  moduleTitle: {
     fontFamily: 'Urbanist_600SemiBold',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontFamily: 'Urbanist_400Regular',
     fontSize: 16,
-    color: COLORS.text.primary,
-  },
-  nextLessonMeta: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 13,
     color: COLORS.text.secondary,
-    marginTop: 2,
-  },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  skillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  skillPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    overflow: 'hidden',
-    position: 'relative',
-    gap: 6,
-  },
-  skillPillLocked: {
-    backgroundColor: '#F5F5F5',
-  },
-  skillMastery: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  skillMasteryComplete: {
-    backgroundColor: '#DCFCE7',
-  },
-  skillName: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
-    color: COLORS.text.primary,
-    zIndex: 1,
-  },
-  skillNameLocked: {
-    color: COLORS.text.muted,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  actionContent: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontFamily: 'Urbanist_600SemiBold',
-    fontSize: 15,
-    color: COLORS.text.primary,
-  },
-  actionSubtitle: {
-    fontFamily: 'Urbanist_400Regular',
-    fontSize: 13,
-    color: COLORS.text.secondary,
-    marginTop: 2,
   },
   bottomContainer: {
     position: 'absolute',

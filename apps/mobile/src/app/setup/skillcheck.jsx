@@ -12,11 +12,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Check, ChevronRight } from 'lucide-react-native';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAppFonts } from '@/components/useFonts';
 import { COLORS } from '@/components/theme/colors';
 import { useAuth } from '@/utils/auth';
-import { api } from '@/lib/api';
+import { supabase } from '@/utils/auth/supabase';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
 // Sample skill check questions
@@ -51,14 +50,11 @@ export default function SkillCheckScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
   const { user } = useAuth();
-  const { topic, intent, intensity } = useLocalSearchParams();
-  const queryClient = useQueryClient();
+  const { topic } = useLocalSearchParams();
 
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState(null);
-  const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -78,10 +74,18 @@ export default function SkillCheckScreen() {
     ]).start();
   };
 
-  const handleNext = async () => {
-    const newAnswers = [...answers, { questionId: question.id, selected, weight: question.weights[selected] }];
-    setAnswers(newAnswers);
+  const navigateToCourse = (courseId, courseTitle) => {
+    setLoading(false);
+    router.replace({
+      pathname: '/course',
+      params: { 
+        courseId: courseId || 'new',
+        topic: courseTitle || topic,
+      },
+    });
+  };
 
+  const handleNext = async () => {
     if (!isLast) {
       Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
         setCurrentQ(currentQ + 1);
@@ -90,58 +94,40 @@ export default function SkillCheckScreen() {
         Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       });
     } else {
-      // Calculate prior knowledge from answers
-      const avgWeight = newAnswers.reduce((sum, a) => sum + a.weight, 0) / newAnswers.length;
-
-      // Create learning thread via API
       setLoading(true);
-      setError(null);
 
       try {
-        console.log('Creating learning thread:', { topic, intent, intensity });
+        const requestBody = {
+          topic: topic || 'General Learning',
+        };
+        
+        if (user?.id) {
+          requestBody.user_id = user.id;
+        }
 
-        // Call the threads.create API
-        const data = await api.threads.create(topic, {
-          intent,
-          intensity,
-          priorKnowledge: avgWeight,
-          context: `User's intent: ${intent}, Intensity: ${intensity}, Prior knowledge level: ${Math.round(avgWeight * 100)}%`,
+        const response = await supabase.functions.invoke('generate-course', {
+          body: requestBody,
         });
 
-        console.log('Thread creation response:', data);
+        if (response.error) {
+          console.error('Error generating course:', response.error);
+          navigateToCourse();
+          return;
+        }
 
-        // Invalidate queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ['activeCourses'] });
-        queryClient.invalidateQueries({ queryKey: ['userStats'] });
+        const data = response.data;
 
-        if (data?.thread?.id || data?.threadId) {
-          const threadId = data.thread?.id || data.threadId;
-          // Navigate to the newly created course
-          router.replace({
-            pathname: '/course',
-            params: {
-              threadId,
-              courseId: threadId,
-              topic: data.thread?.title || topic,
-            },
-          });
+        if (data?.success && data.course?.id) {
+          navigateToCourse(data.course.id, data.course.title);
         } else {
           console.warn('Unexpected response format:', data);
-          // Fallback if thread creation didn't return expected data
-          setLoading(false);
-          setError('Course creation returned unexpected data');
+          navigateToCourse();
         }
-      } catch (err) {
-        console.error('Error creating learning thread:', err);
-        setLoading(false);
-        setError(err.message || 'Failed to create course. Please try again.');
+      } catch (error) {
+        console.error('Error calling generate-course function:', error);
+        navigateToCourse();
       }
     }
-  };
-
-  const handleRetry = () => {
-    setError(null);
-    handleNext();
   };
 
   return (
@@ -205,7 +191,7 @@ export default function SkillCheckScreen() {
       </Animated.View>
 
       {/* Continue button */}
-      {selected !== null && !loading && !error && (
+      {selected !== null && (
         <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity
             style={styles.continueButton}
@@ -216,25 +202,16 @@ export default function SkillCheckScreen() {
               colors={[COLORS.primary, COLORS.primaryDark]}
               style={styles.continueGradient}
             >
-              <Text style={styles.continueText}>
-                {isLast ? 'Start Learning' : 'Continue'}
-              </Text>
-              <ChevronRight size={20} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Error state */}
-      {error && (
-        <View style={[styles.bottomContainer, { paddingBottom: insets.bottom + 20 }]}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.continueButton} onPress={handleRetry}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryDark]}
-              style={styles.continueGradient}
-            >
-              <Text style={styles.continueText}>Try Again</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.continueText}>
+                    {isLast ? 'Start Learning' : 'Continue'}
+                  </Text>
+                  <ChevronRight size={20} color="#FFFFFF" />
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -245,7 +222,7 @@ export default function SkillCheckScreen() {
         <View style={styles.loadingOverlay}>
           <BrokMascot size={120} mood="excited" />
           <Text style={styles.loadingTitle}>Building your path...</Text>
-          <Text style={styles.loadingSubtitle}>Creating your personalized skill graph</Text>
+          <Text style={styles.loadingSubtitle}>Personalizing your learning journey</Text>
           <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
         </View>
       )}
@@ -365,13 +342,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 17,
     color: '#FFFFFF',
-  },
-  errorText: {
-    fontFamily: 'Urbanist_500Medium',
-    fontSize: 14,
-    color: '#EF4444',
-    textAlign: 'center',
-    marginBottom: 16,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

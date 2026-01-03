@@ -10,9 +10,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Star, Flame, TrendingUp, ChevronRight } from 'lucide-react-native';
 import { useAppFonts } from '@/components/useFonts';
+import { useAuth } from '@/utils/auth';
+import { supabase } from '@/utils/auth/supabase';
 import { COLORS } from '@/components/theme/colors';
 import BrokMascot from '@/components/mascot/BrokMascot';
 
@@ -95,7 +98,24 @@ function Confetti({ delay, startX }) {
 export default function CompleteScreen() {
   const insets = useSafeAreaInsets();
   const { fontsLoaded } = useAppFonts();
-  const { courseId, skillId, xp } = useLocalSearchParams();
+  const { user } = useAuth();
+  const { courseId, xp, correct, total } = useLocalSearchParams();
+
+  // Fetch user progress to get streak
+  const { data: userProgress } = useQuery({
+    queryKey: ['userProgress', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('current_streak')
+        .eq('user_id', user.id)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const badgeAnim1 = useRef(new Animated.Value(0)).current;
@@ -126,7 +146,10 @@ export default function CompleteScreen() {
   if (!fontsLoaded) return null;
 
   const xpEarned = parseInt(xp) || 60;
-  const currentStreak = 5;
+  const correctCount = parseInt(correct) || 0;
+  const totalCount = parseInt(total) || 0;
+  const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 100;
+  const currentStreak = userProgress?.current_streak || 0;
 
   const handleContinue = () => {
     if (courseId) {
@@ -220,27 +243,29 @@ export default function CompleteScreen() {
             <Text style={styles.badgeValue}>{currentStreak} Day Streak!</Text>
           </Animated.View>
 
-          {/* Level Up Badge */}
-          <Animated.View
-            style={[
-              styles.badge,
-              styles.badgeLevelUp,
-              {
-                transform: [
-                  {
-                    scale: badgeAnim3.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.5, 1],
-                    }),
-                  },
-                ],
-                opacity: badgeAnim3,
-              },
-            ]}
-          >
-            <TrendingUp size={20} color="#10B981" />
-            <Text style={styles.badgeValue}>Level Up!</Text>
-          </Animated.View>
+          {/* Accuracy Badge */}
+          {totalCount > 0 && (
+            <Animated.View
+              style={[
+                styles.badge,
+                styles.badgeLevelUp,
+                {
+                  transform: [
+                    {
+                      scale: badgeAnim3.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.5, 1],
+                      }),
+                    },
+                  ],
+                  opacity: badgeAnim3,
+                },
+              ]}
+            >
+              <TrendingUp size={20} color="#10B981" />
+              <Text style={styles.badgeValue}>{accuracy}% Accuracy</Text>
+            </Animated.View>
+          )}
         </View>
 
         {/* Mascot */}
